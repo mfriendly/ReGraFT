@@ -1,0 +1,195 @@
+{
+    "skip_connection": true,
+    "adaptive_graph": "fusionfap",
+    "end_attn": true,
+    "start_attn": true,
+    "scaler_name": "",
+    "add_target_to_scale_vars": true,
+    "save_attn_weight": false,
+    "save_adj_weight": false,
+    "save_transform_weight": false,
+    "START": "2020-03-01",
+    "END": "2022-03-01",
+    "dropout_type": "zoneout",
+    "fusion_mode": "none",
+    "version": "V1e",
+    "gcn_depth": 1,
+    "gcn_alpha": 1.0,
+    "diff": true,
+    "difference-Days": 1,
+    "apply-difference-to-X": true,
+    "unknown_real_x_target": [
+        "new_confirmed"
+    ],
+    "pol_lags": [
+        42
+    ],
+    "holiday_cols": [
+        "is_holiday",
+        "is_holiday_lag_1",
+        "is_holiday_lag_2",
+        "is_holiday_lag_3"
+    ],
+    "policy_lag_vars": [
+        "cancel_public_events_lag_42",
+        "contact_tracing_lag_42",
+        "international_travel_controls_lag_42",
+        "restrictions_on_gatherings_lag_42"
+    ],
+    "pols_cols": [
+        "cancel_public_events",
+        "contact_tracing",
+        "international_travel_controls",
+        "restrictions_on_gatherings"
+    ],
+    "gt_lag_vars": [],
+    "gt_cols": [],
+    "gt_lags": [],
+    "time_cat_cols": [
+        "categorical_day_of_week",
+        "categorical_month",
+        "categorical_week",
+        "days_from_start",
+        "week_from_start"
+    ],
+    "input_cols": [
+        "new_confirmed_Y",
+        "new_confirmed",
+        "cancel_public_events_lag_42",
+        "contact_tracing_lag_42",
+        "international_travel_controls_lag_42",
+        "restrictions_on_gatherings_lag_42",
+        "is_holiday",
+        "is_holiday_lag_1",
+        "is_holiday_lag_2",
+        "is_holiday_lag_3",
+        "categorical_day_of_week",
+        "categorical_month",
+        "categorical_week",
+        "days_from_start",
+        "week_from_start",
+        "categorical_id"
+    ],
+    "target_col": "new_confirmed_Y",
+    "EMBEDDING_DIM": 1,
+    "use_transform": false,
+    "LOSS": "RMSE",
+    "SEED": 15,
+    "current_time": "2024-05-22-132420",
+    "BATCHSIZE": 4,
+    "past_steps": 42,
+    "future_steps": 42,
+    "output_size": 1,
+    "dynamic": "dynamic",
+    "SPLIT": [
+        0.7,
+        0.85
+    ],
+    "total_steps": 84,
+    "CL": true,
+    "data_name": "covid",
+    "MODEL": "ReGfusionfapDiff",
+    "time_col": "date",
+    "CONTINUE": true,
+    "PATIENCE": 2,
+    "num_nodes": 51,
+    "CL_STEP": 1000,
+    "INPUTID": "16A-Diff",
+    "PREFIX": "ReGfusionfapDiff_42_42",
+    "PREFIX_fuzzy": "*ReGfusionfapDiff*42_42",
+    "save_path": "../results/covid/ReGfusionfapDiff_42_42/16A-Diff/15",
+    "input_size": 14,
+    "static_variables": 0,
+    "x_categoricals": [
+        "is_holiday",
+        "is_holiday_lag_1",
+        "is_holiday_lag_2",
+        "is_holiday_lag_3",
+        "categorical_day_of_week",
+        "categorical_month",
+        "categorical_week",
+        "days_from_start",
+        "week_from_start"
+    ],
+    "time_varying_categorical_variables": 9,
+    "time_varying_real_variables_encoder": 5,
+    "time_varying_categorical_variables_list": [
+        "is_holiday",
+        "is_holiday_lag_1",
+        "is_holiday_lag_2",
+        "is_holiday_lag_3",
+        "categorical_day_of_week",
+        "categorical_month",
+        "categorical_week",
+        "days_from_start",
+        "week_from_start"
+    ],
+    "time_varying_real_variables_encoder_list": [
+        "new_confirmed",
+        "cancel_public_events_lag_42",
+        "contact_tracing_lag_42",
+        "international_travel_controls_lag_42",
+        "restrictions_on_gatherings_lag_42"
+    ],
+    "time_varying_real_variables_decoder": 4,
+    "embedding_dim": 1,
+    "rnn_hidden_dimension": 14,
+    "num_masked_series": 1,
+    "rnn_layers": 1,
+    "device": "cuda",
+    "encode_length": 42,
+    "seq_length": 84,
+    "x_categorical_embed_sizes": {
+        "is_holiday": [
+            3,
+            1
+        ],
+        "is_holiday_lag_1": [
+            3,
+            1
+        ],
+        "is_holiday_lag_2": [
+            3,
+            1
+        ],
+        "is_holiday_lag_3": [
+            3,
+            1
+        ],
+        "categorical_day_of_week": [
+            8,
+            1
+        ],
+        "categorical_month": [
+            13,
+            1
+        ],
+        "categorical_week": [
+            53,
+            1
+        ],
+        "days_from_start": [
+            732,
+            1
+        ],
+        "week_from_start": [
+            106,
+            1
+        ]
+    },
+    "max_samples_list": [],
+    "attn_heads": 1,
+    "lr": 3e-06,
+    "GRAPHS": [
+        "travel",
+        "dist"
+    ],
+    "dropout": 0.6,
+    "gcn_dropout": 0.6,
+    "elu": true,
+    "use_transform_skip": true,
+    "CKPT_SAVE": "../results/covid/ReGfusionfapDiff_42_42/16A-Diff/15/y_ckpt/",
+    "L_PATH": "../results/covid/ReGfusionfapDiff_42_42/16A-Diff/15/y_ckpt/bests-v1.pth",
+    "C_PATH": "../results/covid/ReGfusionfapDiff_42_42/16A-Diff/15/y_ckpt/bests-v2.pth",
+    "PARAMS": 61620
+}

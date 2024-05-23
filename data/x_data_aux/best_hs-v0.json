@@ -1,0 +1,3 @@
+{"lr": 1.4593472711688833e-06, "dropout": 0.3682637645224083, "gcn_depth": 4, "attn_heads": 1, "GRAPHS": [
+        "dist", "travel"]
+}
