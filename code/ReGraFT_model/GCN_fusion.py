@@ -24,16 +24,6 @@ class static_gconv(nn.Module):
         return x.contiguous()
 
 
-class gconv(nn.Module):
-
-    def __init__(self):
-        super(gconv, self).__init__()
-
-    def forward(self, A, x):
-        x = torch.einsum("hw, bwtc->bhtc", (A.double(), x.double()))
-        return x.contiguous()
-
-
 class linear(nn.Module):
 
     def __init__(self, c_in, c_out, bias=True):
@@ -42,7 +32,8 @@ class linear(nn.Module):
 
     def forward(self, x):
         x = x.double()
-        out = F.relu(self.fc(x.permute(0, 2, 1)).permute(0, 2, 1), inplace=True)
+        out = F.relu(self.fc(x.permute(0, 2, 1)).permute(0, 2, 1),
+                     inplace=True)
         return out
 
 
@@ -50,16 +41,23 @@ class GCN_Fus(nn.Module):
 
     def __init__(self, c_in, c_out, gdep, dropout_prob, graph_num, type=None):
         super().__init__()
-        graph_num
+        self.adap_gconv = []
         gdep = 1
+        graph_num
+        print("graph_num", graph_num)
+        if graph_num >= 3:
+            self.adap_gconv1 = adap_gconv()
+            self.adap_gconv.append(self.adap_gconv1)
+        if graph_num >= 4:
+            self.adap_gconv2 = adap_gconv()
+            self.adap_gconv.append(self.adap_gconv2)
+        if graph_num == 5:
+            self.adap_gconv3 = adap_gconv()
+            self.adap_gconv.append(self.adap_gconv3)
 
-        self.adap_gconv1 = adap_gconv()
-        self.adap_gconv2 = adap_gconv()
-        self.adap_gconv3 = adap_gconv()
-        self.adap_gconv = [self.adap_gconv1, self.adap_gconv2, self.adap_gconv3]
         self.static_gconv1 = static_gconv()
         self.static_gconv2 = static_gconv()
-        self.static_gconv =[self.static_gconv1, self.static_gconv2]
+        self.static_gconv = [self.static_gconv1, self.static_gconv2]
 
         self.fc1 = linear((gdep + 1) * c_in, c_out)
         self.weight1 = nn.Parameter(torch.FloatTensor(graph_num + 1),
@@ -73,8 +71,8 @@ class GCN_Fus(nn.Module):
         self.gdep = gdep
         self.type = type
 
-    def forward(self, x, norm_adj, adap_norm_adj=None):
-        # print("adap_norm_adj", len(adap_norm_adj))
+    def forward(self, x, static_norm_adjs, adap_norm_adjs=None):
+
         h1 = x
 
         out1 = [h1]
@@ -83,15 +81,17 @@ class GCN_Fus(nn.Module):
 
         for _ in range(self.gdep):
             h_next1 = weight1[0] * x
-            for i in range(0, len(norm_adj)):
-                h_next1 += weight1[i + 1] * self.static_gconv[i](norm_adj[i], h1)
-            if adap_norm_adj is not None:
-                for dd in range(0, len(adap_norm_adj)):
-                    # print("dd", dd)
+            for i in range(0, len(static_norm_adjs)):
+                h_next1 += weight1[i + 1] * self.static_gconv[i](
+                    static_norm_adjs[i], h1)
+            if adap_norm_adjs is not None:
+                for dd in range(0, len(adap_norm_adjs)):
+
                     adap_gconv = self.adap_gconv[dd]
-                    # print("adap_gconv", adap_gconv)
-                    h_next1 += weight1[ len(norm_adj)+ dd] * adap_gconv(
-                        adap_norm_adj[dd], h1)
+
+                    h_next1 += weight1[len(static_norm_adjs) +
+                                       dd] * adap_gconv(
+                                           adap_norm_adjs[dd], h1)
             h1 = h_next1
             out1.append(h1)
 

@@ -82,12 +82,15 @@ class MGGRUCell(nn.Module):
         if config['adaptive_graph'] == 'fusionFAP':
             n_adap_graphs = 3
 
-        if config['adaptive_graph'] == 'Pool' or config['adaptive_graph'] == 'Fc' or config['adaptive_graph'] == 'Attn':
+
+        if config['adaptive_graph'] == 'fusionFA' or config[
+                'adaptive_graph'] == 'fusionAP' or config[
+                    'adaptive_graph'] == 'fusionFP':
             n_adap_graphs = 2
 
-        if config['adaptive_graph'] == 'FA' or config['adaptive_graph'] == 'fusionAP' or config['adaptive_graph'] == 'fusionFP':
+        if config['adaptive_graph'] == 'Pool' or config[
+                'adaptive_graph'] == 'Fc' or config['adaptive_graph'] == 'Attn':
             n_adap_graphs = 1
-
         self.static_norm_adjs = static_norm_adjs
         self.update_GCN1 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                                dropout_prob,
@@ -197,17 +200,17 @@ class MGGRUCell(nn.Module):
             adap_norm_adj.append(adap_norm_adj_pool)
             adap_norm_adjT.append(adap_norm_adjT_pool)
 
-        norm_adjs = [adj for adj in self.static_norm_adjs]
-        norm_adjTs = [adj.T for adj in self.static_norm_adjs]
+        static_norm_adjs = self.static_norm_adjs
+        static_norm_adjTs = [adj.T for adj in self.static_norm_adjs]
         update_gate = torch.sigmoid(
-            self.update_GCN1(combined, norm_adjs, adap_norm_adj) +
-            self.update_GCN2(combined, norm_adjTs, adap_norm_adjT))
+            self.update_GCN1(combined, static_norm_adjs, adap_norm_adj) +
+            self.update_GCN2(combined, static_norm_adjTs, adap_norm_adjT))
         update_gate = F.dropout(update_gate,
                                 p=self.dropout_prob,
                                 training=self.training)
         reset_gate = torch.sigmoid(
-            self.reset_GCN1(combined, norm_adjs, adap_norm_adj) +
-            self.reset_GCN2(combined, norm_adjTs, adap_norm_adjT))
+            self.reset_GCN1(combined, static_norm_adjs, adap_norm_adj) +
+            self.reset_GCN2(combined, static_norm_adjTs, adap_norm_adjT))
         reset_gate = F.dropout(reset_gate,
                                p=self.dropout_prob,
                                training=self.training)
@@ -216,8 +219,8 @@ class MGGRUCell(nn.Module):
         Hidden_State = fn(Hidden_State)
         temp = torch.cat((x, torch.mul(reset_gate, Hidden_State)), -1)
         state_candidate_State = torch.tanh(
-            self.state_candidate_GCN1(temp, norm_adjs, adap_norm_adj) +
-            self.state_candidate_GCN2(temp, norm_adjTs, adap_norm_adjT))
+            self.state_candidate_GCN1(temp, static_norm_adjs, adap_norm_adj) +
+            self.state_candidate_GCN2(temp, static_norm_adjTs, adap_norm_adjT))
         state_candidate_State = F.dropout(state_candidate_State,
                                           p=self.dropout_prob,
                                           training=self.training)

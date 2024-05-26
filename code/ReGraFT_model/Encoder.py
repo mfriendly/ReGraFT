@@ -76,7 +76,8 @@ class Encoder(nn.Module):
             outputs.append(cur_out.unsqueeze(dim=2))
             if True:
                 stacked_adap_norm_adjs = torch.stack(adap_norm_adjs)
-                average_adap_norm_adj = torch.mean(stacked_adap_norm_adjs, dim=0)
+                average_adap_norm_adj = torch.mean(stacked_adap_norm_adjs,
+                                                   dim=0)
                 adjs_output.append(average_adap_norm_adj)
             else:
                 adjs_output = None
