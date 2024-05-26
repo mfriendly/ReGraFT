@@ -53,7 +53,7 @@ class MGGRUCell(nn.Module):
                 node_num=node_num,
                 reduction=1,
                 alpha=alpha)
-        elif config['adaptive_graph'] == 'Fc' or config[
+        if config['adaptive_graph'] == 'Fc' or config[
                 'adaptive_graph'] == 'fusionFA' or config[
                     'adaptive_graph'] == 'fusionFAP' or config[
                         'adaptive_graph'] == 'fusionFP':
@@ -66,7 +66,7 @@ class MGGRUCell(nn.Module):
                 node_num=node_num,
                 reduction=1,
                 alpha=alpha)
-        elif config['adaptive_graph'] == 'Pool' or config[
+        if config['adaptive_graph'] == 'Pool' or config[
                 'adaptive_graph'] == 'fusionAP' or config[
                     'adaptive_graph'] == 'fusionFAP' or config[
                         'adaptive_graph'] == 'fusionFP':
@@ -79,28 +79,37 @@ class MGGRUCell(nn.Module):
                 node_num=node_num,
                 reduction=1,
                 alpha=alpha)
+        if config['adaptive_graph'] == 'fusionFAP':
+            n_adap_graphs = 3
+
+        if config['adaptive_graph'] == 'Pool' or config['adaptive_graph'] == 'Fc' or config['adaptive_graph'] == 'Attn':
+            n_adap_graphs = 2
+
+        if config['adaptive_graph'] == 'FA' or config['adaptive_graph'] == 'fusionAP' or config['adaptive_graph'] == 'fusionFP':
+            n_adap_graphs = 1
+
         self.static_norm_adjs = static_norm_adjs
         self.update_GCN1 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                                dropout_prob,
-                               len(static_norm_adjs) + 1)
+                               len(static_norm_adjs) + n_adap_graphs)
         self.update_GCN2 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                                dropout_prob,
-                               len(static_norm_adjs) + 1)
+                               len(static_norm_adjs) + n_adap_graphs)
         self.reset_GCN1 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                               dropout_prob,
-                              len(static_norm_adjs) + 1)
+                              len(static_norm_adjs) + n_adap_graphs)
         self.reset_GCN2 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                               dropout_prob,
-                              len(static_norm_adjs) + 1)
+                              len(static_norm_adjs) + n_adap_graphs)
         self.layerNorm1 = nn.LayerNorm([self.hidden_channels])
         self.layerNorm2 = nn.LayerNorm([self.hidden_channels])
         self.layerNorm3 = nn.LayerNorm([self.hidden_channels])
         self.state_candidate_GCN1 = GCN(hidden_channels * 2, hidden_channels,
                                         gcn_depth, dropout_prob,
-                                        len(static_norm_adjs) + 1)
+                                        len(static_norm_adjs) + n_adap_graphs)
         self.state_candidate_GCN2 = GCN(hidden_channels * 2, hidden_channels,
                                         gcn_depth, dropout_prob,
-                                        len(static_norm_adjs) + 1)
+                                        len(static_norm_adjs) + n_adap_graphs)
         self.selu1 = nn.SELU()
 
     def self_attention(self,
@@ -185,8 +194,6 @@ class MGGRUCell(nn.Module):
                 x.float(), Hidden_State.float())
             del adap_adj_pool
             adap_norm_adjT_pool = adap_norm_adj_pool.transpose(1, 2)
-            adap_norm_adj.append(adap_norm_adj_pool)
-            adap_norm_adjT.append(adap_norm_adjT_pool)
             adap_norm_adj.append(adap_norm_adj_pool)
             adap_norm_adjT.append(adap_norm_adjT_pool)
 

@@ -261,6 +261,7 @@ def Prepare_Training_Inputs(
     config = {}
     config['skip_connection'] = True
     config['adaptive_graph'] = ADAPTIVEGRAPH
+    print("ADAPTIVEGRAPH", ADAPTIVEGRAPH)
 
     if diff:
         MODEL += 'Diff'
@@ -430,7 +431,7 @@ def Prepare_Training_Inputs(
 
 
 def train_regraft(TEST=True, input_path=None, output_path=None):
-    ADAPTIVEGRAPH = 'Fc'
+
     print("Available Adaptive Graph Generator versions: Fc, Attn, Pool, fusionFAP, fusionFA, fusionFP, fusionAP")
     SEED = 15
     end_attn = True
@@ -439,14 +440,16 @@ def train_regraft(TEST=True, input_path=None, output_path=None):
     parser.add_argument("--SEED", type=int, default=SEED)
     parser.add_argument('--start_attn', default=start_attn)
     parser.add_argument('--end_attn', default=end_attn)
+    parser.add_argument('--ADAPTIVEGRAPH', type=str,default="Fc")
     args = parser.parse_args()
+    ADAPTIVEGRAPH = args.ADAPTIVEGRAPH
     SEED = args.SEED
     end_attn = args.end_attn
     start_attn = args.start_attn
     GCN_DEPTH = 1
     MODEL = f'ReG{ADAPTIVEGRAPH}'
     EPOCHS = 15
-    patience = 2
+    patience = 3
     diff = True
     CONTINUE = True
     MAKE_DFS = False
