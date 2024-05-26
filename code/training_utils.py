@@ -6,49 +6,48 @@ import sys, string
 import os, glob, re
 from datetime import timedelta
 import json, gc
-import time
-import sys
 import matplotlib.pyplot as plt
 import matplotlib
 from pandas import DatetimeIndex
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (mean_squared_error, mean_absolute_error,
                              mean_absolute_percentage_error)
-import time, json
 
 
-def check_if_exp_id_exists_from_reading_json_then_create_one_if_not(
-        input_cols):
-    json_file_name = ".." + f"/data/x_data_aux/experiment_ids.json"
-    try:
-        with open(json_file_name, "r") as json_file:
-            experiment_ids = json.load(json_file)
-    except FileNotFoundError:
-        experiment_ids = {}
-    subset_key = "_".join(sorted(input_cols))
-    if subset_key in experiment_ids:
-        return experiment_ids[subset_key]
-    else:
-        next_identifier_index = len(experiment_ids) % len(
-            string.ascii_uppercase)
-        next_identifier = string.ascii_uppercase[next_identifier_index]
-        new_experiment_id = f"{len(input_cols)}{next_identifier}"
-        experiment_ids[subset_key] = new_experiment_id
-        with open(json_file_name, "w") as json_file:
-            json.dump(experiment_ids, json_file, indent=4)
-        return new_experiment_id
+class EarlyStopping:
 
+    def __init__(self, patience=7, verbose=False, delta=0):
+        self.patience = patience
+        self.verbose = verbose
+        self.counter = 0
+        self.best_score = None
+        self.early_stop = False
+        self.val_loss_min = np.Inf
+        self.delta = delta
 
-def set_seed(seed=42, make_deterministic=True):
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    if make_deterministic:
-        torch.backends.cudnn.deterministic = True
-        torch.backends.cudnn.benchmark = True
-    os.environ["PYTHONHASHSEED"] = str(seed)
+    def __call__(self, val_loss, model, path):
+        score = -val_loss
+        if self.best_score is None:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model, path)
+        elif score < self.best_score + self.delta:
+            self.counter += 1
+            if self.counter >= self.patience:
+                self.early_stop = True
+        else:
+            self.best_score = score
+            self.save_checkpoint(val_loss, model, path)
+            self.counter = 0
+
+    def save_checkpoint(self, val_loss, model, path):
+        if self.verbose:
+            print(
+                f"Validation loss decreased ({self.val_loss_min:.6f} --> {val_loss:.6f})."
+            )
+        if not os.path.exists(path):
+            os.makedirs(path)
+        torch.save(model.state_dict(), os.path.join(path, "checkpoint.pth"))
+        self.val_loss_min = val_loss
 
 
 def save_last_processed_number(save_path, number):
@@ -119,36 +118,3 @@ def set_seed(seed=42, make_deterministic=True):
         torch.backends.cudnn.deterministic = True
         torch.backends.cudnn.benchmark = False
     os.environ["PYTHONHASHSEED"] = str(seed)
-
-
-def serialize_dict(data):
-    if isinstance(data, dict):
-        return {k: serialize_dict(v) for k, v in data.items()}
-    elif isinstance(data, list):
-        return [serialize_dict(item) for item in data]
-    elif isinstance(data, np.ndarray):
-        return serialize_dict(data.tolist())
-    elif isinstance(
-            data,
-        (
-            np.int_,
-            np.intc,
-            np.intp,
-            np.int8,
-            np.int16,
-            np.int32,
-            np.int64,
-            np.uint8,
-            np.uint16,
-            np.uint32,
-            np.uint64,
-        ),
-    ):
-        return int(data)
-    elif isinstance(data, (np.float_, np.float16, np.float32, np.float64)):
-        return float(data)
-    elif isinstance(data, np.bool_):
-        return bool(data)
-    elif isinstance(data, DatetimeIndex):
-        return data.strftime("%Y-%m-%d").tolist()
-    return data

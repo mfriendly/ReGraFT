@@ -6,6 +6,7 @@ from torch.autograd import Variable
 from torch.nn.parameter import Parameter
 import numpy as np
 import pandas as pd
+from ReGraFT_model.mggru_cell import MGGRUCell as MGGRUCell
 
 
 class Encoder(nn.Module):
@@ -33,7 +34,7 @@ class Encoder(nn.Module):
         self.hidden_channels = hidden_channels
         self.RNN_layer = 1
         self.device = device
-        from ReGraFT_model.mggru_cell import MGGRUCell as MGGRUCell
+
         self.RNNCell = nn.ModuleList([
             MGGRUCell(
                 config,
@@ -49,11 +50,7 @@ class Encoder(nn.Module):
         ])
 
     def forward(self, x, seq_length, adjs):
-        """
-        :param input: [batch, node, num_pred*3, input_dim]
-        :param seq_length: num_pred
-        :return: [batch, node, num_pred, hidden_dim]
-        """
+
         batch_size, node_num, time_len, dim = x.shape
         Hidden_State = [
             self.initHidden(batch_size, node_num, self.hidden_channels)
@@ -75,9 +72,9 @@ class Encoder(nn.Module):
                 fn = self._get_activation(name1)
                 input_cur = fn(cur_out)
                 input_time = None
-                dyn_norm_adjs.append(dyn_norm_adj)
+                dyn_norm_adjs.extend(dyn_norm_adj)
             outputs.append(cur_out.unsqueeze(dim=2))
-            if False:
+            if True:
                 stacked_dyn_norm_adjs = torch.stack(dyn_norm_adjs)
                 average_dyn_norm_adj = torch.mean(stacked_dyn_norm_adjs, dim=0)
                 adjs_output.append(average_dyn_norm_adj)
@@ -101,13 +98,10 @@ class Encoder(nn.Module):
         :return:
         """
         device = "cpu"
-        if True:
-            Hidden_State = Variable(
-                torch.zeros((batch_size, num_nodes, hidden_dim)))
-            return Hidden_State
-        else:
-            Hidden_State = Variable(torch.zeros(batch_size, hidden_dim))
-            return Hidden_State
+
+        Hidden_State = Variable(
+            torch.zeros((batch_size, num_nodes, hidden_dim)))
+        return Hidden_State
 
     def init_weights(self):
         INITRANGE = 0.04

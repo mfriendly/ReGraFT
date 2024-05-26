@@ -9,13 +9,15 @@ import json, gc
 from torch.utils.data import Subset
 from datetime import timedelta
 
-LR = 3e-06
+from mk_loader import make_loaders
+
 from training_utils import *
 from data_utils import *
 from tqdm import tqdm
 import matplotlib
 import matplotlib.pyplot as plt
 import scienceplots
+
 plt.style.use(["science", "no-latex"])
 plt.rcParams.update({"font.size": 11})
 import torch, os
@@ -26,9 +28,11 @@ from datetime import datetime
 import glob
 from torch.multiprocessing import set_start_method
 import warnings
+
 warnings.filterwarnings("ignore")
 import string
-device = "cuda"
+LR = 3e-06
+device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.set_default_device(device)
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
@@ -253,7 +257,7 @@ def Prepare_Training_Inputs(
         policy_lag_vars, gt_cols, gt_lags, gt_lag_vars, input_cols, INPUTID,
         DYN, CL, data_name, time_col, SPLIT, LOSSTYPE, stateUS, list_of_states,
         list_of_abbr, dict_of_states, start_attn, end_attn, ADAPTIVEGRAPH,
-        patience):
+        patience, output_path):
     config = {}
     config['skip_connection'] = True
     config['adaptive_graph'] = ADAPTIVEGRAPH
@@ -261,7 +265,6 @@ def Prepare_Training_Inputs(
     if diff:
         MODEL += 'Diff'
 
-    from mk_loader import make_loaders
     config['end_attn'] = end_attn
     config['start_attn'] = start_attn
     config["scaler_name"] = scaler_name
@@ -278,7 +281,7 @@ def Prepare_Training_Inputs(
     config["START"], config["END"] = "2020-03-01", "2022-03-01"
     config["dropout_type"] = "zoneout"
     config["fusion_mode"] = "none"
-    config["version"] = "V1e"
+    config["version"] = ""
     config["gcn_depth"] = GCN_DEPTH
     config["gcn_alpha"] = 1.0
     config['diff'] = diff
@@ -298,7 +301,6 @@ def Prepare_Training_Inputs(
     config["target_col"] = target_col
     config["EMBEDDING_DIM"] = EMBEDDING_DIM
     time_cat_cols = config["time_cat_cols"]
-    config["use_transform"] = False
     config["LOSS"] = LOSSTYPE
     config["SEED"] = SEED
     config.update({
@@ -322,10 +324,7 @@ def Prepare_Training_Inputs(
         "SPLIT": SPLIT,
         "INPUTID": INPUTID
     })
-    if MAKE_DFS:
-        from Prepare_data import Prepare_data_ReGraFT
 
-        Prepare_data_ReGraFT(config)
     if config["diff"]:
         INPUTID += "-Diff"
     config["INPUTID"] = INPUTID
@@ -336,18 +335,19 @@ def Prepare_Training_Inputs(
         "PREFIX_fuzzy": PREFIX_fuzzy,
     })
     set_seed(SEED)
-    save_path = os.path.join(".." + f"/results", data_name, PREFIX, INPUTID,
+    save_path = os.path.join(output_path, data_name, PREFIX, INPUTID,
                              str(SEED))
     config["save_path"] = save_path
     if not os.path.exists(save_path):
         os.makedirs(save_path)
     try:
         (train, valid, test, train_loader, val_loader, test_loader, config,
-         dist_matrix, travel_matrix, travel_matrix, input_cols, target_col,
-         policy_lag_vars, holiday_cols, INPUTID, standard_scaler_stats_dict,
+         dist_matrix, travel_matrix, input_cols, target_col, policy_lag_vars,
+         holiday_cols, INPUTID, standard_scaler_stats_dict,
          standard_scaler_stats_dict_one, test_dataset,
          initial_values_date_dict,
          const_dict) = make_loaders(config,
+                                    input_path,
                                     SEED,
                                     CONTINUE,
                                     data_name,
@@ -360,11 +360,12 @@ def Prepare_Training_Inputs(
         time.sleep(5)
         CONTINUE = False
         (train, valid, test, train_loader, val_loader, test_loader, config,
-         dist_matrix, travel_matrix, travel_matrix, input_cols, target_col,
-         policy_lag_vars, holiday_cols, INPUTID, standard_scaler_stats_dict,
+         dist_matrix, travel_matrix, input_cols, target_col, policy_lag_vars,
+         holiday_cols, INPUTID, standard_scaler_stats_dict,
          standard_scaler_stats_dict_one, test_dataset,
          initial_values_date_dict,
          const_dict) = make_loaders(config,
+                                    input_path,
                                     SEED,
                                     CONTINUE,
                                     data_name,
@@ -390,12 +391,10 @@ def Prepare_Training_Inputs(
     loaders = {"train": train_loader, "val": val_loader, "test": test_loader}
     config["elu"] = True
     config["use_transform_skip"] = True
-    config["version"] = "V1e"
+    config["version"] = ""
     GRAPHS = config["GRAPHS"]
     GRAPHS.reverse()
     graphs_str = "-".join(GRAPHS)
-
-    headers = ["train", "val", "test"]
 
     config["BATCHSIZE"] = BATCHSIZE
     config["PREFIX"] = PREFIX
@@ -430,8 +429,9 @@ def Prepare_Training_Inputs(
     return train, valid, test, train_loader, val_loader, test_loader, config, dist_matrix, travel_matrix, input_cols, target_col, policy_lag_vars, holiday_cols, INPUTID, standard_scaler_stats_dict, test_dataset, initial_values_date_dict
 
 
-def train_regraft(TEST=True):
-    ADAPTIVEGRAPH = 'fusionfap'
+def train_regraft(TEST=True, input_path=None, output_path=None):
+    ADAPTIVEGRAPH = 'Fc'
+    print("Available Adaptive Graph Generator versions: Fc, Attn, Pool, fusionFAP, fusionFA, fusionFP, fusionAP")
     SEED = 15
     end_attn = True
     start_attn = True
@@ -445,7 +445,7 @@ def train_regraft(TEST=True):
     start_attn = args.start_attn
     GCN_DEPTH = 1
     MODEL = f'ReG{ADAPTIVEGRAPH}'
-    EPOCHS = 0
+    EPOCHS = 15
     patience = 2
     diff = True
     CONTINUE = True
@@ -519,7 +519,7 @@ def train_regraft(TEST=True):
                   gt_lag_vars + holiday_cols + time_cat_cols +
                   ["categorical_id"])
     INPUTID = check_if_exp_id_exists_from_reading_json_then_create_one_if_not(
-        input_cols)
+        input_cols, input_path)
     output_size = 1
     DYN = "dynamic"
     CL = True
@@ -528,12 +528,12 @@ def train_regraft(TEST=True):
     time_col = "date"
     SPLIT = (0.7, 0.85)
     LOSSTYPE = "RMSE"
-    stateUS = pd.read_csv(".." + f"/data/x_data_aux/statemappingUS.csv")
+    stateUS = pd.read_csv(input_path + f"/x_data_aux/statemappingUS.csv")
     list_of_states = stateUS["State"].tolist()
     list_of_abbr = stateUS["Abbr"].tolist()
     dict_of_states = dict(zip(list_of_states, list_of_abbr))
-    dist_matrix = np.load(".." + f"/data/x_data_aux/matrix_0.npy")
-    travel_matrix = np.load(".." + f"/data/x_data_aux/matrix_1.npy")
+    dist_matrix = np.load(input_path + f"/x_data_aux/matrix_0.npy")
+    travel_matrix = np.load(input_path + f"/x_data_aux/matrix_1.npy")
     dist_matrix__ = torch.tensor(dist_matrix, dtype=torch.float64)
     travel_matrix__ = torch.tensor(travel_matrix, dtype=torch.float64)
     gdict = {"dist": dist_matrix__, "travel": travel_matrix__}
@@ -550,7 +550,7 @@ def train_regraft(TEST=True):
         policy_lag_vars, gt_cols, gt_lags, gt_lag_vars, input_cols, INPUTID,
         DYN, CL, data_name, time_col, SPLIT, LOSSTYPE, stateUS, list_of_states,
         list_of_abbr, dict_of_states, start_attn, end_attn, ADAPTIVEGRAPH,
-        patience)
+        patience, output_path)
     from ReGraFT_model.regraft_model import ReGraFT as ReGraFT
     model_ = ReGraFT(config, 51, adjs)
     model_ = model_.to(device)
@@ -597,5 +597,8 @@ def train_regraft(TEST=True):
             save_to_json(config, R)
             print("FINISHED TESTING")
 
+
 if __name__ == "__main__":
-    train_regraft(TEST=True)
+    input_path = '../data'
+    output_path = '../results'
+    train_regraft(TEST=True, input_path=input_path, output_path=output_path)

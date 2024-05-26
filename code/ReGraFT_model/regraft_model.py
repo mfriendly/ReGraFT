@@ -6,7 +6,7 @@ import os, gc
 from ReGraFT_model.Encoder import Encoder as GraphEncoder
 from ReGraFT_model.Decoder import Decoder as GraphDecoder
 
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.set_default_device(device)
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 os.environ["TORCH_USE_CUDA_DSA"] = "1"
@@ -21,10 +21,9 @@ class TimeDistributed(nn.Module):
 
     def forward(self, x0):
         if isinstance(self.module, nn.Embedding):
-            if True:
-                x0 = x0.to(torch.int64).cuda()
-            else:
-                x0 = x0.to(dtype=torch.long, device=x0.device)
+
+            x0 = x0.to(torch.int64).cuda()
+
         if len(x0.size()) <= 2:
             return self.module(x0)
         x_reshape = x0.contiguous().view(-1, x0.size(-1))
@@ -222,7 +221,7 @@ class ReGraFT(nn.Module):
              config["time_varying_categorical_variables"] + 1),
             self.hidden_size, self.dropout,
             config["embedding_dim"] * config["static_variables"])
-        self.use_transform = config["use_transform"]
+
         self.gcn_depth = config["gcn_depth"]
         self.dropout_type = config["dropout_type"]
         self.dropout_prob = config["dropout"]
@@ -251,12 +250,8 @@ class ReGraFT(nn.Module):
             static_norm_adjs=self.adjs,
             use_curriculum_learning=self.cl,
             cl_decay_steps=self.config["CL_STEP"])
-        self.conv1 = nn.Conv1d(self.in_channels,
-                               self.hidden_size,
-                               kernel_size=1)
-        self.conv2 = nn.Conv1d(self.in_channels,
-                               self.hidden_size,
-                               kernel_size=1)
+        self.fc1 = nn.Conv1d(self.in_channels, self.hidden_size, kernel_size=1)
+        self.fc2 = nn.Conv1d(self.in_channels, self.hidden_size, kernel_size=1)
         self.post_attn_glu = TimeDistributed(GLU(self.hidden_size))
         self.post_attn_norm = TimeDistributed(
             nn.BatchNorm1d(self.hidden_size, self.hidden_size))

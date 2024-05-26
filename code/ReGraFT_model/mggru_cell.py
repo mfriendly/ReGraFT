@@ -18,7 +18,6 @@ class MGGRUCell(nn.Module):
         node_num=51,
         static_norm_adjs=None,
         alpha=1,
-
     ):
         super().__init__()
         self.config = config
@@ -27,55 +26,59 @@ class MGGRUCell(nn.Module):
         self.gcn_depth = gcn_depth
         self.hidden_channels = hidden_channels
         self.dropout_type = dropout_type
-        self.dropout_prob = dropout_prob
+        self.dropout_prob = dropout_prob = config["dropout"]
         self.dropout = nn.Dropout(dropout_prob)
-        self.xh_fc = nn.Linear(28, hidden_channels)
-        self.t_fc = nn.Linear(28, hidden_channels)
-        self.query_A = nn.Linear(hidden_channels, hidden_channels)
-        self.key_A = nn.Linear(hidden_channels, hidden_channels)
-        self.value_A = nn.Linear(hidden_channels, hidden_channels)
-        self.query_B = nn.Linear(hidden_channels, hidden_channels)
-        self.key_B = nn.Linear(hidden_channels, hidden_channels)
-        self.value_B = nn.Linear(hidden_channels, hidden_channels)
+        self.query_start = nn.Linear(hidden_channels, hidden_channels)
+        self.key_start = nn.Linear(hidden_channels, hidden_channels)
+        self.value_start = nn.Linear(hidden_channels, hidden_channels)
+        self.query_end = nn.Linear(hidden_channels, hidden_channels)
+        self.key_end = nn.Linear(hidden_channels, hidden_channels)
+        self.value_end = nn.Linear(hidden_channels, hidden_channels)
         self.attention = nn.Parameter(torch.Tensor(3, 1))
-        self.bn_A = nn.BatchNorm1d(hidden_channels)
-        self.bn_B = nn.BatchNorm1d(hidden_channels)
+        self.bn_start = nn.BatchNorm1d(hidden_channels)
+        self.bn_end = nn.BatchNorm1d(hidden_channels)
         self.input_FC = nn.Linear((hidden_channels + hidden_channels),
                                   hidden_channels)
         self.gate_FC1 = nn.Linear(hidden_channels, hidden_channels)
-        dropout_prob = config["dropout"]
-        if config['adaptive_graph'] == 'attn':
-            from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_attn as AdaptiveSimilarityGenerator
-        elif config['adaptive_graph'] == 'fc':
-            from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_fc as AdaptiveSimilarityGenerator
-        elif config['adaptive_graph'] == 'pool':
-            from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_pool as AdaptiveSimilarityGenerator
-        elif config['adaptive_graph'] == 'fusionfap' or config[
-                'adaptive_graph'] == 'fusionfp' or config[
-                    'adaptive_graph'] == 'fusionfa':
+
+        if config['adaptive_graph'] == 'Attn' or config[
+                'adaptive_graph'] == 'fusionFA' or config[
+                    'adaptive_graph'] == 'fusionFAP' or config[
+                        'adaptive_graph'] == 'fusionAP':
             from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_attn as AdaptiveSimilarityGenerator_attn
+            self.adapGraph_attn = AdaptiveSimilarityGenerator_attn(
+                hidden_channels,
+                hidden_channels,
+                dropout_prob,
+                node_num=node_num,
+                reduction=1,
+                alpha=alpha)
+        elif config['adaptive_graph'] == 'Fc' or config[
+                'adaptive_graph'] == 'fusionFA' or config[
+                    'adaptive_graph'] == 'fusionFAP' or config[
+                        'adaptive_graph'] == 'fusionFP':
             from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_fc as AdaptiveSimilarityGenerator_fc
+
+            self.adapGraph_fc = AdaptiveSimilarityGenerator_fc(
+                hidden_channels,
+                hidden_channels,
+                dropout_prob,
+                node_num=node_num,
+                reduction=1,
+                alpha=alpha)
+        elif config['adaptive_graph'] == 'Pool' or config[
+                'adaptive_graph'] == 'fusionAP' or config[
+                    'adaptive_graph'] == 'fusionFAP' or config[
+                        'adaptive_graph'] == 'fusionFP':
             from ReGraFT_model.AdaptiveSimilarity import AdaptiveSimilarityGenerator_pool as AdaptiveSimilarityGenerator_pool
-        self.adapGraph_attn = AdaptiveSimilarityGenerator_attn(
-            hidden_channels,
-            hidden_channels,
-            dropout_prob,
-            node_num=node_num,
-            reduction=16,
-            alpha=alpha)
-        self.adapGraph_fc = AdaptiveSimilarityGenerator_fc(hidden_channels,
-                                                           hidden_channels,
-                                                           dropout_prob,
-                                                           node_num=node_num,
-                                                           reduction=16,
-                                                           alpha=alpha)
-        self.adapGraph_pool = AdaptiveSimilarityGenerator_pool(
-            hidden_channels,
-            hidden_channels,
-            dropout_prob,
-            node_num=node_num,
-            reduction=16,
-            alpha=alpha)
+
+            self.adapGraph_pool = AdaptiveSimilarityGenerator_pool(
+                hidden_channels,
+                hidden_channels,
+                dropout_prob,
+                node_num=node_num,
+                reduction=1,
+                alpha=alpha)
         self.static_norm_adjs = static_norm_adjs
         self.update_GCN1 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                                dropout_prob,
@@ -89,7 +92,9 @@ class MGGRUCell(nn.Module):
         self.reset_GCN2 = GCN(hidden_channels * 2, hidden_channels, gcn_depth,
                               dropout_prob,
                               len(static_norm_adjs) + 1)
-        self.layerNorm = nn.LayerNorm([self.hidden_channels])
+        self.layerNorm1 = nn.LayerNorm([self.hidden_channels])
+        self.layerNorm2 = nn.LayerNorm([self.hidden_channels])
+        self.layerNorm3 = nn.LayerNorm([self.hidden_channels])
         self.state_candidate_GCN1 = GCN(hidden_channels * 2, hidden_channels,
                                         gcn_depth, dropout_prob,
                                         len(static_norm_adjs) + 1)
@@ -126,17 +131,19 @@ class MGGRUCell(nn.Module):
                 encoder_hidden=None,
                 adaptive=True):
         if self.start_attn:
-            attention_output = self.self_attention(x, self.query_A, self.key_A,
-                                                   self.value_A,
+            attention_output = self.self_attention(x, self.query_start,
+                                                   self.key_start,
+                                                   self.value_start,
                                                    self.hidden_channels, None,
                                                    None)
             attention_output = self.selu1(attention_output)
             combined_output = x + attention_output
+            combined_output = self.layerNorm1(combined_output)
             combined_output = self.selu1(combined_output)
             combined_output = F.dropout(combined_output,
                                         p=self.dropout_prob,
                                         training=self.training)
-            x = self.layerNorm(combined_output)
+            x = combined_output
         if x.dim() == 4:
             x = x.cuda().squeeze(2)
         batch_size, node_num, hidden_channels = x.shape
@@ -147,43 +154,42 @@ class MGGRUCell(nn.Module):
         if encoder_hidden is not None:
             Hidden_State = Hidden_State + encoder_hidden
         combined = torch.cat((x, Hidden_State), -1)
-        if adaptive:
-            adap_norm_adj = []
-            adap_norm_adjT = []
-            if self.config['adaptive_graph'] == 'fusionfap' or self.config[
-                    'adaptive_graph'] == 'fusionfa' or self.config[
-                        'adaptive_graph'] == 'fusionap' or self.config[
-                            'adaptive_graph'] == 'attn':
-                adap_norm_adj_attn, adap_adj_attn, correlation_attn = self.adapGraph_attn(
-                    x.float(), Hidden_State.float())
-                del adap_adj_attn
-                adap_norm_adjT_attn = adap_norm_adj_attn.transpose(1, 2)
-                adap_norm_adj.append(adap_norm_adj_attn)
-                adap_norm_adjT.append(adap_norm_adjT_attn)
-            if self.config['adaptive_graph'] == 'fusionfap' or self.config[
-                    'adaptive_graph'] == 'fusionfp' or self.config[
-                        'adaptive_graph'] == 'fusionfa' or self.config[
-                            'adaptive_graph'] == 'fc':
-                adap_norm_adj_fc, adap_adj_fc, correlation_fc = self.adapGraph_fc(
-                    x.float(), Hidden_State.float())
-                del adap_adj_fc
-                adap_norm_adjT_fc = adap_norm_adj_fc.transpose(1, 2)
-                adap_norm_adj.append(adap_norm_adj_fc)
-                adap_norm_adjT.append(adap_norm_adjT_fc)
-            if self.config['adaptive_graph'] == 'fusionfap' or self.config[
-                    'adaptive_graph'] == 'fusionfp' or self.config[
-                        'adaptive_graph'] == 'fusionfp' or self.config[
-                            'adaptive_graph'] == 'pool':
-                adap_norm_adj_pool, adap_adj_pool, correlation_pool = self.adapGraph_pool(
-                    x.float(), Hidden_State.float())
-                del adap_adj_pool
-                adap_norm_adjT_pool = adap_norm_adj_pool.transpose(1, 2)
-                adap_norm_adj.append(adap_norm_adj_pool)
-                adap_norm_adjT.append(adap_norm_adjT_pool)
-                adap_norm_adj.append(adap_norm_adj_pool)
-                adap_norm_adjT.append(adap_norm_adjT_pool)
-        else:
-            adap_norm_adj = adap_norm_adjT = []
+
+        adap_norm_adj = []
+        adap_norm_adjT = []
+        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
+                'adaptive_graph'] == 'fusionFA' or self.config[
+                    'adaptive_graph'] == 'fusionAP' or self.config[
+                        'adaptive_graph'] == 'Attn':
+            adap_norm_adj_attn, adap_adj_attn, correlation_attn = self.adapGraph_attn(
+                x.float(), Hidden_State.float())
+            del adap_adj_attn
+            adap_norm_adjT_attn = adap_norm_adj_attn.transpose(1, 2)
+            adap_norm_adj.append(adap_norm_adj_attn)
+            adap_norm_adjT.append(adap_norm_adjT_attn)
+        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
+                'adaptive_graph'] == 'fusionFP' or self.config[
+                    'adaptive_graph'] == 'fusionFA' or self.config[
+                        'adaptive_graph'] == 'Fc':
+            adap_norm_adj_fc, adap_adj_fc, correlation_fc = self.adapGraph_fc(
+                x.float(), Hidden_State.float())
+            del adap_adj_fc
+            adap_norm_adjT_fc = adap_norm_adj_fc.transpose(1, 2)
+            adap_norm_adj.append(adap_norm_adj_fc)
+            adap_norm_adjT.append(adap_norm_adjT_fc)
+        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
+                'adaptive_graph'] == 'fusionFP' or self.config[
+                    'adaptive_graph'] == 'fusionAP' or self.config[
+                        'adaptive_graph'] == 'Pool':
+            adap_norm_adj_pool, adap_adj_pool, correlation_pool = self.adapGraph_pool(
+                x.float(), Hidden_State.float())
+            del adap_adj_pool
+            adap_norm_adjT_pool = adap_norm_adj_pool.transpose(1, 2)
+            adap_norm_adj.append(adap_norm_adj_pool)
+            adap_norm_adjT.append(adap_norm_adjT_pool)
+            adap_norm_adj.append(adap_norm_adj_pool)
+            adap_norm_adjT.append(adap_norm_adjT_pool)
+
         norm_adjs = [adj for adj in self.static_norm_adjs]
         norm_adjTs = [adj.T for adj in self.static_norm_adjs]
         update_gate = torch.sigmoid(
@@ -214,30 +220,28 @@ class MGGRUCell(nn.Module):
                                       p=self.dropout_prob,
                                       training=self.training)
         if self.end_attn:
-            attention_output = self.self_attention(next_Hidden_State,
-                                                   self.query_B, self.key_B,
-                                                   self.value_B,
-                                                   self.hidden_channels, None,
-                                                   None)
+            attention_output = self.self_attention(
+                next_Hidden_State, self.query_end, self.key_end,
+                self.value_end, self.hidden_channels, None, None)
             attention_output = self.selu1(attention_output)
             attention_output = F.dropout(attention_output,
                                          p=self.dropout_prob,
                                          training=self.training)
             combined_output = x + attention_output
-            combined_output = self.selu1(combined_output)
-            next_Hidden_State = combined_output
-        next_hidden = self.layerNorm(next_Hidden_State)
-        output = next_hidden
+            combined_output = self.layerNorm2(combined_output)
+            next_Hidden_State = self.selu1(combined_output)
+
+        output = next_hidden = next_Hidden_State
         if self.dropout_type == "zoneout":
             next_hidden = self.zoneout(prev_h=Hidden_State,
                                        next_h=next_hidden,
                                        rate=self.dropout_prob,
                                        training=self.training)
         output = output + x
+        output = self.layerNorm3(output)
         output = self.selu1(output)
         adap_norm_adj = [a.float() for a in adap_norm_adj]
-        return (output.float(), next_hidden.float(), adap_norm_adj,
-                correlation_fc.float())
+        return (output.float(), next_hidden.float(), adap_norm_adj, None)
 
     def _get_activation(self, name):
         if name == "tanh":

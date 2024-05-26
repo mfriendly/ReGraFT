@@ -11,8 +11,8 @@ class AdaptiveSimilarityGenerator_pool(nn.Module):
         hidden_channels,
         dropout_prob,
         node_num,
-        reduction=16,
-        alpha=3,
+        reduction=1,
+        alpha=1.,
     ):
         super().__init__()
         self.in_channels = in_channels
@@ -63,14 +63,14 @@ class AdaptiveSimilarityGenerator_attn(nn.Module):
         hidden_channels,
         dropout_prob,
         node_num,
-        reduction=16,
-        alpha=3,
+        reduction=1,
+        alpha=1.,
     ):
         super().__init__()
-        self.conv1 = nn.Conv1d(in_channels + hidden_channels,
-                               hidden_channels,
-                               kernel_size=1)
-        self.conv2 = nn.Conv1d(hidden_channels, hidden_channels, kernel_size=1)
+        self.fc1 = nn.Conv1d(in_channels + hidden_channels,
+                             hidden_channels,
+                             kernel_size=1)
+        self.fc2 = nn.Conv1d(hidden_channels, hidden_channels, kernel_size=1)
         self.attention = nn.MultiheadAttention(embed_dim=hidden_channels,
                                                num_heads=2,
                                                dropout=dropout_prob)
@@ -81,10 +81,10 @@ class AdaptiveSimilarityGenerator_attn(nn.Module):
         batch_size, node_num, hidden_dim = x.shape
         node_feature = torch.cat([x, hidden], dim=-1)
         node_feature = node_feature.permute(0, 2, 1)
-        node_feature = self.conv1(node_feature)
+        node_feature = self.fc1(node_feature)
         node_feature = F.relu(node_feature)
         node_feature = self.dropout(node_feature)
-        node_feature = self.conv2(node_feature)
+        node_feature = self.fc2(node_feature)
         node_feature = node_feature.permute(2, 0, 1)
         node_feature = self.dropout(node_feature)
         attn_output, _ = self.attention(node_feature, node_feature,
@@ -104,11 +104,11 @@ class AdaptiveSimilarityGenerator_fc(nn.Module):
                  hidden_channels,
                  dropout_prob,
                  node_num,
-                 reduction=16,
-                 alpha=3):
+                 reduction=1,
+                 alpha=1.):
         super().__init__()
-        self.conv1 = nn.Conv1d(in_channels, hidden_channels, kernel_size=1)
-        self.conv2 = nn.Conv1d(hidden_channels, hidden_channels, kernel_size=1)
+        self.fc1 = nn.Conv1d(in_channels, hidden_channels, kernel_size=1)
+        self.fc2 = nn.Conv1d(hidden_channels, hidden_channels, kernel_size=1)
         self.dropout = nn.Dropout(dropout_prob)
         self.alpha = alpha
 
@@ -116,10 +116,10 @@ class AdaptiveSimilarityGenerator_fc(nn.Module):
         batch_size, node_num, hidden_dim = x.shape
         node_feature = x + hidden
         node_feature = node_feature.permute(0, 2, 1)
-        node_feature = self.conv1(node_feature)
+        node_feature = self.fc1(node_feature)
         node_feature = F.relu(node_feature)
         node_feature = self.dropout(node_feature)
-        node_feature = self.conv2(node_feature)
+        node_feature = self.fc2(node_feature)
         node_feature = node_feature.permute(0, 2, 1)
         similarity = torch.matmul(node_feature, node_feature.transpose(
             2, 1)) / math.sqrt(hidden_dim)

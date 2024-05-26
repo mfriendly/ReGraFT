@@ -38,12 +38,11 @@ class linear(nn.Module):
 
     def __init__(self, c_in, c_out, bias=True):
         super(linear, self).__init__()
-        self.mlp = nn.Conv1d(c_in, c_out, kernel_size=1).double()
+        self.fc = nn.Conv1d(c_in, c_out, kernel_size=1).double()
 
     def forward(self, x):
         x = x.double()
-        out = F.elu(self.mlp(x.permute(0, 2, 1)).permute(0, 2, 1),
-                    inplace=True)
+        out = F.elu(self.fc(x.permute(0, 2, 1)).permute(0, 2, 1), inplace=True)
         return out
 
 
@@ -51,19 +50,19 @@ class GCN_Fus(nn.Module):
 
     def __init__(self, c_in, c_out, gdep, dropout_prob, graph_num, type=None):
         super().__init__()
-        if True:
-            self.dyn_gconv = dyn_gconv()
-            self.static_gconv = static_gconv()
-            self.mlp1 = linear((gdep + 1) * c_in, c_out)
-            self.weight1 = nn.Parameter(torch.FloatTensor(graph_num + 1 + 1),
-                                        requires_grad=True)
-            self.weight1.data.fill_(1.0 / (graph_num + 1 + 1))
-            self.gconv = gconv()
-            self.mlp2 = linear((gdep + 1) * c_in, c_out)
-            self.mlp3 = linear(c_out * 2, c_out)
-            self.weight2 = nn.Parameter(torch.FloatTensor(graph_num + 1),
-                                        requires_grad=True)
-            self.weight2.data.fill_(1 / (graph_num + 1))
+
+        self.dyn_gconv = dyn_gconv()
+        self.static_gconv = static_gconv()
+        self.fc1 = linear((gdep + 1) * c_in, c_out)
+        self.weight1 = nn.Parameter(torch.FloatTensor(graph_num + 1 + 1),
+                                    requires_grad=True)
+        self.weight1.data.fill_(1.0 / (graph_num + 1 + 1))
+        self.gconv = gconv()
+        self.fc2 = linear((gdep + 1) * c_in, c_out)
+        self.fc3 = linear(c_out * 2, c_out)
+        self.weight2 = nn.Parameter(torch.FloatTensor(graph_num + 1),
+                                    requires_grad=True)
+        self.weight2.data.fill_(1 / (graph_num + 1))
         self.dropout = nn.Dropout(dropout_prob)
         self.graph_num = graph_num
         self.gdep = gdep
@@ -94,12 +93,12 @@ class GCN_Fus(nn.Module):
         name1 = "relu"
         fn = self._get_activation(name1)
         ho_2 = torch.cat(out2, dim=-1)
-        ho_1 = self.mlp1(ho_1)
-        ho_2 = self.mlp2(ho_2)
+        ho_1 = self.fc1(ho_1)
+        ho_2 = self.fc2(ho_2)
         ho_1 = fn(ho_1)
         ho_2 = fn(ho_2)
         ho3 = torch.cat([ho_1, ho_2], dim=-1)
-        ho_3 = self.mlp3(ho3)
+        ho_3 = self.fc3(ho3)
         name1 = "relu"  # keep relu
         fn = self._get_activation(name1)
         ho_3 = fn(ho_3)

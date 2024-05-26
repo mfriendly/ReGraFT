@@ -5,7 +5,7 @@ import torch
 from tqdm import tqdm
 import os
 
-device = "cuda"
+device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.set_default_device(device)
 torch.nn.Module.dump_patches = True
 

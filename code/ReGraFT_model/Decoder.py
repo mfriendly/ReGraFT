@@ -59,16 +59,6 @@ class Decoder(nn.Module):
         task_level=2,
         global_step=None,
     ):
-        """
-        :param decoder_input: [batch_size, node_num, time_len=1, in_channels]
-        :param target_time:   [batch_size, node_num, num_for_target, time_channels]
-        :param target_cl:     [batch_size, node_num, num_for_target, in_channels]
-        :param Hidden_State:  [batch_size, RNN_layer, node_num, hidden_channels] //
-                              [batch_size, RNN_layer, node_num, num_pred, hidden_channels]
-        :param task_level:    <= num_for_target
-        :param global_step:   Used to adjust whether the input of the decoder is label in curriculum learning
-        :return: [batch_size, node_num, num_for_target, out_channels]
-        """
         batch_size, node_num, time_len, dim = decoder_input.shape
         Hidden_State = [
             Hidden_State[:, l, :, :] for l in range(self.RNN_layer)
@@ -84,7 +74,7 @@ class Decoder(nn.Module):
                     decoder_input, cur_time, cur_h, adjs)
                 sims.append(similarity)
                 Hidden_State[j] = cur_h
-                name1 = "selu"  ##################
+                name1 = "selu"
                 fn = self._get_activation(name1)
                 decoder_input = fn(cur_out)
                 cur_time = None

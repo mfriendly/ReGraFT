@@ -2,13 +2,12 @@ import pandas as pd
 from torch.utils.data import DataLoader
 import numpy as np
 import json, gc, os
-from sklearn.preprocessing import RobustScaler
 from sklearn.preprocessing import StandardScaler
 from tqdm import tqdm
 import seaborn as sns
-#data_preparation import *
+
 sns.set_style("whitegrid")
-from training_utils import *
+
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
@@ -17,36 +16,22 @@ import matplotlib.dates as mdates
 import torch, os
 import csv
 from data_formatters import ts_dataset as ts_dataset
+from training_utils import *
 from data_utils import *
 from datetime import datetime
 import glob
-
-os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
-os.environ["TORCH_USE_CUDA_DSA"] = "1"
 import json
 import string
 
-device = "cuda"
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
+os.environ["TORCH_USE_CUDA_DSA"] = "1"
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
 torch.set_default_device(device)
 
 
-def save_pkl(address, **dataframes):
-    if True:
-        for suffix, df in dataframes.items():
-            filename = f"{address}{suffix}.pkl"
-            df.to_pickle(filename)
-
-
-def load_pkl(address, *suffixes):
-    dataframes = {}
-    for suffix in suffixes:
-        filename = f"{address}{suffix}.pkl"
-        df = pd.read_pickle(filename)
-        dataframes[suffix] = df
-    return dataframes
-
-
 def make_loaders(config,
+                 input_path,
                  SEED,
                  CONTINUE,
                  data_name,
@@ -82,30 +67,28 @@ def make_loaders(config,
     except:
         pass
     INPUTID = config["INPUTID"]
-    stateUS = pd.read_csv(".." + f"/data/x_data_aux/statemappingUS.csv")
+    stateUS = pd.read_csv(input_path + f"/x_data_aux/statemappingUS.csv")
     list_of_states = stateUS["State"].tolist()
     list_of_abbr = stateUS["Abbr"].tolist()
     dict_of_states = dict(zip(list_of_states, list_of_abbr))
-    RR = ".." + f"/data/x_data_aux/travel_matrix_US.pkl"
-    SS = ".." + f"/data/x_data_aux/dist_matrix_US.pkl"
-    DDD = ".." + f"/data/x_data_aux/dir_travel_matrix_US.pkl"
-    if not os.path.exists(DDD):
-        PATH = ".." + f"/data/x_data_aux"
-        travel_matrix = np.load(PATH + f"/data/x_data_aux/matrix_1.npy")
-        save_pickle(dir_travel_matrix, DDD)
-        dist_matrix = np.load(PATH + f"/data/x_data_aux/matrix_0.npy")
-        travel_matrix = np.load(PATH + f"/data/x_data_aux/matrix_1.npy")
-        save_pickle(travel_matrix, RR)
+    SS = input_path + f"/x_data_aux/dist_matrix_US.pkl"
+    DD = input_path + f"/x_data_aux/dir_travel_matrix_US.pkl"
+    if not os.path.exists(DD):
+        PATH = input_path + f"/x_data_aux"
+        travel_matrix = np.load(PATH + f"/matrix_1.npy")
+        save_pickle(travel_matrix, DD)
+        dist_matrix = np.load(PATH + f"/matrix_0.npy")
+        travel_matrix = np.load(PATH + f"/matrix_1.npy")
         save_pickle(dist_matrix, SS)
     else:
-        travel_matrix = load_pickle(RR)
-        dir_travel_matrix = load_pickle(DDD)
+
+        travel_matrix = load_pickle(DD)
         dist_matrix = load_pickle(SS)
     train_data1 = {}
     train_data2 = {}
     valid_data = {}
     test_data = {}
-    save_data = ".." + f"/data/x_data_pkl/{INPUTID}/{scaler_name}"
+    save_data = input_path + f"/x_data_pkl/{INPUTID}/{scaler_name}"
     if not os.path.exists(save_data):
         os.makedirs(save_data)
     mode = 'val'
@@ -251,7 +234,7 @@ def make_loaders(config,
         for node_id, abbr in enumerate(list_of_abbr):
             if abbr == "0.0":
                 continue
-            dfname = ".." + f"/data/x_data_df/df_{abbr}.csv"
+            dfname = input_path + f"/x_data_df/df_{abbr}.csv"
             if not os.path.exists(dfname):
                 continue
             df = pd.read_csv(dfname)
@@ -452,7 +435,7 @@ def make_loaders(config,
     minmax_scalers_dict_one = None
     config["max_samples_list"] = max_samples_list
     return (train, valid, test, train_loader, val_loader, test_loader, config,
-            dist_matrix, travel_matrix, dir_travel_matrix, input_cols,
-            target_col, policy_lag_vars, holiday_cols, INPUTID,
-            standard_scaler_stats_dict, standard_scaler_stats_dict_one,
-            test_dataset, initial_values_date_dict, const_dict)
+            dist_matrix, travel_matrix, input_cols, target_col,
+            policy_lag_vars, holiday_cols, INPUTID, standard_scaler_stats_dict,
+            standard_scaler_stats_dict_one, test_dataset,
+            initial_values_date_dict, const_dict)
