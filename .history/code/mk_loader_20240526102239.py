@@ -71,20 +71,19 @@ def make_loaders(config,
     list_of_states = stateUS["State"].tolist()
     list_of_abbr = stateUS["Abbr"].tolist()
     dict_of_states = dict(zip(list_of_states, list_of_abbr))
-        
-    distance_matrix_path = input_path + "/x_data_aux/dist_matrix_US.pkl"
-    direction_matrix_path = input_path + "/x_data_aux/dir_travel_matrix_US.pkl"
-
-    if not os.path.exists(direction_matrix_path):
-        auxiliary_path = input_path + "/x_data_aux"
-        travel_matrix = np.load(auxiliary_path + "/matrix_1.npy")
-        save_pickle(travel_matrix, direction_matrix_path)
-        distance_matrix = np.load(auxiliary_path + "/matrix_0.npy")
-        save_pickle(distance_matrix, distance_matrix_path)
+    SS = input_path + f"/x_data_aux/dist_matrix_US.pkl"
+    DD = input_path + f"/x_data_aux/dir_travel_matrix_US.pkl"
+    if not os.path.exists(DD):
+        PATH = input_path + f"/x_data_aux"
+        travel_matrix = np.load(PATH + f"/matrix_1.npy")
+        save_pickle(travel_matrix, DD)
+        dist_matrix = np.load(PATH + f"/matrix_0.npy")
+        travel_matrix = np.load(PATH + f"/matrix_1.npy")
+        save_pickle(dist_matrix, SS)
     else:
-        travel_matrix = load_pickle(direction_matrix_path)
-        distance_matrix = load_pickle(distance_matrix_path)
 
+        travel_matrix = load_pickle(DD)
+        dist_matrix = load_pickle(SS)
     train_data1 = {}
     train_data2 = {}
     valid_data = {}

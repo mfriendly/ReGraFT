@@ -462,7 +462,7 @@ def train_regraft(TEST=True, input_path=None, output_path=None):
     GCN_DEPTH = 1
     MODEL = f'ReG{ADAPTIVEGRAPH}'
     EPOCHS = 150
-    patience = 2
+    patience = 1
     diff = True
     CONTINUE = True
     MAKE_DFS = False

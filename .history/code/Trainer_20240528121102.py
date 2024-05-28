@@ -444,16 +444,16 @@ def Prepare_Training_Inputs(
 def train_regraft(TEST=True, input_path=None, output_path=None):
 
     print(
-        "Available Adaptive Graph versions: Fc, Attn, Pool, fusionFAP, fusionFA, fusionFP, fusionAP"
+        "Available Adaptive Graph Generator versions: Fc, Attn, Pool, fusionFAP, fusionFA, fusionFP, fusionAP"
     )
-    SEED = 82
+    SEED = 15
     end_attn = True
     start_attn = True
     parser = argparse.ArgumentParser(description="COVID-19")
     parser.add_argument("--SEED", type=int, default=SEED)
     parser.add_argument('--start_attn', default=start_attn)
     parser.add_argument('--end_attn', default=end_attn)
-    parser.add_argument('--ADAPTIVEGRAPH', type=str, default="fusionFAP")
+    parser.add_argument('--ADAPTIVEGRAPH', type=str, default="Fc")
     args = parser.parse_args()
     ADAPTIVEGRAPH = args.ADAPTIVEGRAPH
     SEED = args.SEED
@@ -461,8 +461,8 @@ def train_regraft(TEST=True, input_path=None, output_path=None):
     start_attn = args.start_attn
     GCN_DEPTH = 1
     MODEL = f'ReG{ADAPTIVEGRAPH}'
-    EPOCHS = 150
-    patience = 2
+    EPOCHS = 1
+    patience = 1
     diff = True
     CONTINUE = True
     MAKE_DFS = False
