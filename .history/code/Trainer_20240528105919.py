@@ -268,7 +268,7 @@ def Prepare_Training_Inputs(
         policy_lag_vars, gt_cols, gt_lags, gt_lag_vars, input_cols, INPUTID,
         DYN, CL, data_name, time_col, SPLIT, LOSSTYPE, stateUS, list_of_states,
         list_of_abbr, dict_of_states, start_attn, end_attn, ADAPTIVEGRAPH,
-        patience, output_path):
+        patience, input_path, output_path):
     config = {}
     config['skip_connection'] = True
     config['adaptive_graph'] = ADAPTIVEGRAPH
@@ -566,7 +566,7 @@ def train_regraft(TEST=True, input_path=None, output_path=None):
         policy_lag_vars, gt_cols, gt_lags, gt_lag_vars, input_cols, INPUTID,
         DYN, CL, data_name, time_col, SPLIT, LOSSTYPE, stateUS, list_of_states,
         list_of_abbr, dict_of_states, start_attn, end_attn, ADAPTIVEGRAPH,
-        patience, output_path)
+        patience, input_path, output_path)
     from ReGraFT_model.regraft_model import ReGraFT as ReGraFT
     model_ = ReGraFT(config, 51, adjs)
     model_ = model_.to(device)
