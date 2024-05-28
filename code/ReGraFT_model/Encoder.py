@@ -92,12 +92,6 @@ class Encoder(nn.Module):
         return outputs_2, hiddens, adjs_output
 
     def initHidden(self, batch_size, num_nodes, hidden_dim):
-        """
-        :param batch_size:
-        :param num_nodes:
-        :param hidden_dim:
-        :return:
-        """
         device = "cpu"
 
         Hidden_State = Variable(

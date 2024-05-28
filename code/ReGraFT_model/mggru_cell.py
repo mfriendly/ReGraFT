@@ -14,7 +14,7 @@ class MGGRUCell(nn.Module):
         hidden_channels,
         dropout_type="zoneout",
         gcn_depth=2,
-        dropout_prob=0.3,
+        dropout_prob=0.6,
         node_num=51,
         static_norm_adjs=None,
         alpha=1,
@@ -34,12 +34,6 @@ class MGGRUCell(nn.Module):
         self.query_end = nn.Linear(hidden_channels, hidden_channels)
         self.key_end = nn.Linear(hidden_channels, hidden_channels)
         self.value_end = nn.Linear(hidden_channels, hidden_channels)
-        self.attention = nn.Parameter(torch.Tensor(3, 1))
-        self.bn_start = nn.BatchNorm1d(hidden_channels)
-        self.bn_end = nn.BatchNorm1d(hidden_channels)
-        self.input_FC = nn.Linear((hidden_channels + hidden_channels),
-                                  hidden_channels)
-        self.gate_FC1 = nn.Linear(hidden_channels, hidden_channels)
 
         if config['adaptive_graph'] == 'Attn' or config[
                 'adaptive_graph'] == 'fusionFA' or config[
@@ -82,10 +76,10 @@ class MGGRUCell(nn.Module):
         if config['adaptive_graph'] == 'fusionFAP':
             n_adap_graphs = 3
 
+        if any(config['adaptive_graph'] == ag
+               for ag in ['fusionFA', 'fusionAP', 'fusionFP']):
+            # Execute relevant code here
 
-        if config['adaptive_graph'] == 'fusionFA' or config[
-                'adaptive_graph'] == 'fusionAP' or config[
-                    'adaptive_graph'] == 'fusionFP':
             n_adap_graphs = 2
 
         if config['adaptive_graph'] == 'Pool' or config[
@@ -169,30 +163,29 @@ class MGGRUCell(nn.Module):
 
         adap_norm_adj = []
         adap_norm_adjT = []
-        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
-                'adaptive_graph'] == 'fusionFA' or self.config[
-                    'adaptive_graph'] == 'fusionAP' or self.config[
-                        'adaptive_graph'] == 'Attn':
+        if any(self.config['adaptive_graph'] == ag
+               for ag in ['fusionFAP', 'fusionFA', 'fusionAP', 'Attn']):
+            # Execute the logic here
+
             adap_norm_adj_attn, adap_adj_attn, correlation_attn = self.adapGraph_attn(
                 x.float(), Hidden_State.float())
             del adap_adj_attn
             adap_norm_adjT_attn = adap_norm_adj_attn.transpose(1, 2)
             adap_norm_adj.append(adap_norm_adj_attn)
             adap_norm_adjT.append(adap_norm_adjT_attn)
-        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
-                'adaptive_graph'] == 'fusionFP' or self.config[
-                    'adaptive_graph'] == 'fusionFA' or self.config[
-                        'adaptive_graph'] == 'Fc':
+        if any(self.config['adaptive_graph'] == ag
+               for ag in ['fusionFAP', 'fusionFP', 'fusionFA', 'Fc']):
+
             adap_norm_adj_fc, adap_adj_fc, correlation_fc = self.adapGraph_fc(
                 x.float(), Hidden_State.float())
             del adap_adj_fc
             adap_norm_adjT_fc = adap_norm_adj_fc.transpose(1, 2)
             adap_norm_adj.append(adap_norm_adj_fc)
             adap_norm_adjT.append(adap_norm_adjT_fc)
-        if self.config['adaptive_graph'] == 'fusionFAP' or self.config[
-                'adaptive_graph'] == 'fusionFP' or self.config[
-                    'adaptive_graph'] == 'fusionAP' or self.config[
-                        'adaptive_graph'] == 'Pool':
+        if any(self.config['adaptive_graph'] == ag
+               for ag in ['fusionFAP', 'fusionFP', 'fusionAP', 'Pool']):
+            # Execute the logic here
+
             adap_norm_adj_pool, adap_adj_pool, correlation_pool = self.adapGraph_pool(
                 x.float(), Hidden_State.float())
             del adap_adj_pool

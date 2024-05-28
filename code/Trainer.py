@@ -116,10 +116,14 @@ def Train(model_, config, train_loader, val_loader, EPOCHS, MAX_STEPS,
                     decoder_adjs_output,
                 ) = model_(tbatch, adjs, global_step)
                 targ = tbatch["outputs"].float()
-                if config["LOSS"] == "RMSE":
+                if True:  #config["LOSS"] == "RMSE":
                     loss = torch.sqrt(
                         torch.functional.F.mse_loss(output.float() / 1.0,
                                                     targ / 1.0))
+                else:
+                    corr_rmse_loss = CorrRMSELoss(alpha=0.1)
+
+                    loss = corr_rmse_loss(output.float() / 1.0, targ / 1.0)
                 if torch.isnan(loss):
                     sys.exit(1)
                 optimizer.zero_grad()
@@ -160,10 +164,16 @@ def Train(model_, config, train_loader, val_loader, EPOCHS, MAX_STEPS,
                         vbatch["outputs"].float() / 1.0,
                     )
                     import time
-                    loss = torch.sqrt(
-                        torch.functional.F.mse_loss(
-                            output.float() / 1.0,
-                            vbatch["outputs"].float() / 1.0))
+                    if True:  #con
+                        loss = torch.sqrt(
+                            torch.functional.F.mse_loss(
+                                output.float() / 1.0,
+                                vbatch["outputs"].float() / 1.0))
+                    else:
+                        corr_rmse_loss = CorrRMSELoss(alpha=0.1)
+
+                        loss = corr_rmse_loss(output.float() / 1.0,
+                                              vbatch["outputs"].float() / 1.0)
                     val_loss.append(loss.item())
                     pbar.set_postfix(loss=np.mean(val_loss).item())
                     pbar.set_description(
@@ -451,8 +461,8 @@ def train_regraft(TEST=True, input_path=None, output_path=None):
     start_attn = args.start_attn
     GCN_DEPTH = 1
     MODEL = f'ReG{ADAPTIVEGRAPH}'
-    EPOCHS = 150
-    patience = 2
+    EPOCHS = 1
+    patience = 1
     diff = True
     CONTINUE = True
     MAKE_DFS = False

@@ -12,6 +12,35 @@ from pandas import DatetimeIndex
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import (mean_squared_error, mean_absolute_error,
                              mean_absolute_percentage_error)
+import torch
+import torch.nn as nn
+
+
+def correlation_coefficient_loss(outputs, targets):
+    # Assuming outputs and targets are of shape [batch, features, time]
+    mean_x = torch.mean(outputs, dim=2, keepdim=True)  # Mean across time
+    mean_y = torch.mean(targets, dim=2, keepdim=True)
+    vx = outputs - mean_x
+    vy = targets - mean_y
+    cost = torch.sum(vx * vy, dim=2) / (torch.sqrt(torch.sum(vx**2, dim=2)) *
+                                        torch.sqrt(torch.sum(vy**2, dim=2)))
+    return torch.mean(cost)  # Mean over batch
+
+
+class CorrRMSELoss(nn.Module):
+
+    def __init__(self, alpha=0.1):
+        super(CorrRMSELoss, self).__init__()
+        self.alpha = alpha
+        self.mse = nn.MSELoss()
+
+    def forward(self, outputs, targets):
+        # RMSE calculation
+        rmse = torch.sqrt(self.mse(outputs, targets))
+        # Correlation calculation
+        corr = correlation_coefficient_loss(outputs, targets)
+        # Combine RMSE and correlation into a single loss
+        return self.alpha * rmse - (1 - self.alpha) * corr
 
 
 class EarlyStopping:

@@ -42,9 +42,9 @@ class GCN_Fus(nn.Module):
     def __init__(self, c_in, c_out, gdep, dropout_prob, graph_num, type=None):
         super().__init__()
         self.adap_gconv = []
+        self.hidden_channels = hidden_channels = c_out
         gdep = 1
-        graph_num
-        print("graph_num", graph_num)
+
         if graph_num >= 3:
             self.adap_gconv1 = adap_gconv()
             self.adap_gconv.append(self.adap_gconv1)
@@ -65,11 +65,38 @@ class GCN_Fus(nn.Module):
         self.weight1.data.fill_(1.0 / (graph_num + 1))
 
         self.fc3 = linear(c_out, c_out)
+        self.dropout_prob = dropout_prob
 
         self.dropout = nn.Dropout(dropout_prob)
         self.graph_num = graph_num
         self.gdep = gdep
         self.type = type
+        self.selu1 = nn.SELU()
+        self.layerNorm2 = nn.LayerNorm([self.hidden_channels]).double()
+        self.end_attn = True
+        self.query_end = nn.Linear(hidden_channels, hidden_channels).double()
+        self.key_end = nn.Linear(hidden_channels, hidden_channels).double()
+        self.value_end = nn.Linear(hidden_channels, hidden_channels).double()
+
+    def self_attention(self,
+                       features,
+                       query,
+                       key,
+                       value,
+                       hidden_dim,
+                       masks=None,
+                       pos_encoder=None):
+        Q = query(features)
+        K = key(features)
+        V = value(features)
+        attention_scores = torch.matmul(Q, K.transpose(-2, -1)) / (hidden_dim**
+                                                                   0.5)
+        if masks is not None:
+            attention_scores = attention_scores.masked_fill(
+                masks == 0, float('-inf'))
+        attention_weights = F.softmax(attention_scores, dim=-1)
+        attention_output = torch.matmul(attention_weights, V)
+        return attention_output
 
     def forward(self, x, static_norm_adjs, adap_norm_adjs=None):
 
@@ -103,10 +130,22 @@ class GCN_Fus(nn.Module):
 
         ho_1 = fn(ho_1)
 
+        if self.end_attn:
+            attention_output = self.self_attention(ho_1, self.query_end,
+                                                   self.key_end,
+                                                   self.value_end,
+                                                   self.hidden_channels, None,
+                                                   None)
+            attention_output = self.selu1(attention_output)
+            attention_output = F.dropout(attention_output,
+                                         p=self.dropout_prob,
+                                         training=self.training)
+            combined_output = ho_1 + attention_output
+            combined_output = self.layerNorm2(combined_output)
+            ho_1 = self.selu1(combined_output)
+
         ho_3 = self.fc3(ho_1)
-        name1 = "relu"
-        fn = self._get_activation(name1)
-        ho_3 = fn(ho_3)
+
         return ho_3.float()
 
     def _get_activation(self, name):
