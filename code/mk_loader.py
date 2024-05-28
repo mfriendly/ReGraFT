@@ -71,7 +71,7 @@ def make_loaders(config,
     list_of_states = stateUS["State"].tolist()
     list_of_abbr = stateUS["Abbr"].tolist()
     dict_of_states = dict(zip(list_of_states, list_of_abbr))
-        
+
     distance_matrix_path = input_path + "/x_data_aux/dist_matrix_US.pkl"
     direction_matrix_path = input_path + "/x_data_aux/dir_travel_matrix_US.pkl"
 

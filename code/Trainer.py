@@ -367,8 +367,9 @@ def Prepare_Training_Inputs(
                                     aug=False,
                                     scaler_name=scaler_name)
     except Exception as e:
+        #print(e, "Train.py")
         import time
-
+        #time.sleep(5)
         CONTINUE = False
         (train, valid, test, train_loader, val_loader, test_loader, config,
          dist_matrix, travel_matrix, input_cols, target_col, policy_lag_vars,
