@@ -4,3 +4,6 @@
 "*.sh" 
 "results/" 
 ".history/" 
+"*.sh" 
+"results/" 
+".history/" 
