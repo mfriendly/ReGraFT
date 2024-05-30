@@ -16,7 +16,7 @@ This repository contains the code for the paper "Forecasting Epidemic Spread wit
 
 ## Data
 Before running the training and testing, please download the data folder from [Code Ocean Capsule](https://codeocean.com/capsule/0157271/tree) and add it to this repository.
- A detailed reproducibility environment setup can also be found on Code Ocean.
+ A detailed reproducibility environment setup can also be found on this link.
 
 ## Installation
 
