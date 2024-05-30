@@ -16,7 +16,7 @@ This repository contains the code for the paper "Forecasting Epidemic Spread wit
 
 ## Data
 Before running the training and testing, please download the data folder from [Code Ocean Capsule](https://codeocean.com/capsule/0157271/tree) and add it to this repository.
-
+ A detailed reproducibility environment setup can also be found on Code Ocean.
 
 ## Installation
 
@@ -42,6 +42,8 @@ If you use this code in your research, please cite:
 ```
 "Code for Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers," https://github.com/mfriendly/ReGraFT/
 ```
+
+## Source Code References
 
 The implementation of our model is based on the code from the following repositories:
 - [https://github.com/EternityZY/STNSCM](https://github.com/EternityZY/STNSCM)
