@@ -2,7 +2,7 @@
 
 cd ../code/
 
-SEED_LIST=($(seq 30 31))
+SEED_LIST=(31)
 max_jobs=1
 
 START=6
