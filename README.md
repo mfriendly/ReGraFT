@@ -23,6 +23,8 @@ This repository provides the code and data for the paper titled **"Forecasting E
 git clone https://github.com/mfriendly/ReGraFT.git
 cd ReGraFT
 cd code
+ conda create -n regraft39 python=3.9
+ conda activate regraft39
 pip install -r requirements.txt
 ./run.sh
 ```
@@ -62,7 +64,7 @@ pip install -r requirements.txt
    Windows doesn’t support `.sh` files directly. You can run the script manually or create a `.bat` file:
 
    ```bash
-   python main.py
+   python main_Pipeline.py
    ```
 
    Alternatively, you can use Git Bash or another terminal that supports `.sh` files.
