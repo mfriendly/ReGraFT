@@ -5,7 +5,7 @@
 
 ## Project Overview
 
-This repository provides the code and data for the paper titled **"Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers"**, which has been submitted to the IEEE JBHI. The paper presents a novel approach using **Multigraph-Gated GRU (MGRU)** architecture for spatiotemporal forecasting of COVID-19 spread.
+This repository provides the code and data for the paper titled **"Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers"**, which has been submitted to the IEEE JBHI. The paper presents a novel approach using **Multigraph-Gated Recurrent Unit (MGRU)** architecture for spatiotemporal forecasting of COVID-19 spread.
 
 
 ## Code Base and References
