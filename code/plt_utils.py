@@ -1,29 +1,21 @@
-import json, os
+import json, os, glob
 
 import numpy as np
 import pandas as pd
-OUT_PATH = "z_Variable_Importance"
-os.makedirs(OUT_PATH, exist_ok=True)
-LR = 4.245451262763638e-06
-INPUT_SIZE = 42
-
-DIR = "results"
 
 import matplotlib
 import matplotlib.pyplot as plt
-import scienceplots
-
-plt.style.use(["science", "no-latex"])
-
-plt.rcParams.update({"font.size": 12})
 
 matplotlib.use("Agg")
 import csv
-import glob
-import os
 
 import torch
 import torch.nn.functional as F
+
+OUT_PATH = "z_Variable_Importance"
+os.makedirs(OUT_PATH, exist_ok=True)
+INPUT_SIZE = 42
+DIR_TO_PARSE = "results"
 
 def init_csv(filename, labels, decoder):
     with open(filename, "w", newline="") as csvfile:
@@ -36,21 +28,35 @@ def init_csv(filename, labels, decoder):
 def init_csvs(filenames, labels):
     init_csv(filenames[0], labels, False)
     init_csv(filenames[1], labels, False)
-    init_csv(filenames[2], labels, True)
+
+def make_init_files(SOURCE, fnames):
+    SOURCE_1 = f"{SOURCE}/_encoder_sparse/_matrix__02.npy"
+    SOURCE_2 = f"{SOURCE}/_decoder_sparse/_matrix__02.npy"
+    encoder_npy, decoder_npy = np.load(SOURCE_1), np.load(SOURCE_2)
+
+    encoder_npy = encoder_npy[:, :, :].squeeze()
+    decoder_npy = decoder_npy[:, :, :].squeeze()
+    if decoder_npy.ndim == 2:
+        decoder_npy = np.expand_dims(decoder_npy, axis=-1)
+    ts, a, num_vars = encoder_npy.shape
+    c_file = f"{SOURCE}/config.json"
+    with open(c_file, "r") as f:
+        config = json.load(f)
+
+    variable_labels = config["input_cols"][1:-1]
+
+    assert len(variable_labels) == num_vars
+
+    init_csvs(fnames, variable_labels)
+    return config, encoder_npy, decoder_npy, variable_labels
 
 def write_to_csv(abbr, data, labels, filename):
-    print("data, labels", data, labels)
-    with open(filename, "a", newline="") as csvfile:
-        print("filename", filename)
-        csvwriter = csv.writer(csvfile)
-        csvwriter.writerow([abbr] + list(data.numpy()))
 
-def process_and_save_interpretation(interpretation, abbr, variable_labels,
-                                    filenames):
-    write_to_csv(abbr, interpretation["encoder_variables"], variable_labels,
-                 filenames[1])
-    write_to_csv(abbr, interpretation["decoder_variables"],
-                 variable_labels[1:], filenames[2])
+    with open(filename, "a", newline="") as csvfile:
+
+        csvwriter = csv.writer(csvfile)
+
+        csvwriter.writerow([abbr] + list(data.numpy()))
 
 def plot_bar(tensor, labels, filename, title):
     try:
@@ -96,47 +102,36 @@ def padded_stack(tensors, side="right", mode="constant", value=0):
         else:
             raise ValueError(f"side for padding '{side}' is unknown")
 
-    out = torch.stack(
-        [(F.pad(
-            x, make_padding(full_size - x.shape[-1]), mode=mode, value=value)
+    out = torch.stack([(F.pad(x, make_padding(full_size - x.shape[-1]), mode=mode, value=value)
           if full_size - x.shape[-1] > 0 else x) for x in tensors],
-        dim=0,
-    )
+        dim=0,)
     return out
 
-def interpret_output(
-    out,
+def interpret_output(out,
     reduction: str = "none",
-    attention_prediction_horizon: int = 0,
-):
+    attention_prediction_horizon: int = 0,):
     batch_size = len(out["decoder_attention"])
     if isinstance(out["decoder_attention"], (list, tuple)):
         max_last_dimension = max(x.shape[-1] for x in out["decoder_attention"])
         first_elm = out["decoder_attention"][0]
-        decoder_attention = torch.full(
-            (batch_size, *first_elm.shape[:-1], max_last_dimension),
+        decoder_attention = torch.full((batch_size, *first_elm.shape[:-1], max_last_dimension),
             float("nan"),
             dtype=first_elm.dtype,
-            device=first_elm.device,
-        )
+            device=first_elm.device,)
         for idx, x in enumerate(out["decoder_attention"]):
             decoder_length = out["decoder_lengths"][idx]
-            decoder_attention[idx, :, :, :decoder_length] = x[
-                ..., :decoder_length]
+            decoder_attention[idx, :, :, :decoder_length] = x[..., :decoder_length]
     else:
         decoder_attention = out["decoder_attention"].clone()
         decoder_mask = create_mask(out["decoder_attention"].shape[1],
                                    out["decoder_lengths"])
-        decoder_attention[decoder_mask[..., None, None].expand_as(
-            decoder_attention)] = float("nan")
+        decoder_attention[decoder_mask[..., None, None].expand_as(decoder_attention)] = float("nan")
     if isinstance(out["encoder_attention"], (list, tuple)):
         first_elm = out["encoder_attention"][0]
-        encoder_attention = torch.full(
-            (batch_size, *first_elm.shape[:-1], INPUT_SIZE),
+        encoder_attention = torch.full((batch_size, *first_elm.shape[:-1], INPUT_SIZE),
             float("nan"),
             dtype=first_elm.dtype,
-            device=first_elm.device,
-        )
+            device=first_elm.device,)
         for idx, x in enumerate(out["encoder_attention"]):
             encoder_length = out["encoder_lengths"][idx]
             encoder_attention[idx, :, :, INPUT_SIZE -
@@ -152,21 +147,13 @@ def interpret_output(
                                          dim=3,
                                          index=new_index.long())
         if encoder_attention.shape[-1] < INPUT_SIZE:
-            encoder_attention = torch.concat(
-                [
-                    torch.full(
-                        (
-                            *encoder_attention.shape[:-1],
-                            INPUT_SIZE - out["encoder_lengths"].max(),
-                        ),
+            encoder_attention = torch.concat([torch.full((*encoder_attention.shape[:-1],
+                            INPUT_SIZE - out["encoder_lengths"].max(),),
                         float("nan"),
                         dtype=encoder_attention.dtype,
-                        device=encoder_attention.device,
-                    ),
-                    encoder_attention,
-                ],
-                dim=-1,
-            )
+                        device=encoder_attention.device,),
+                    encoder_attention,],
+                dim=-1,)
     attention = torch.concat([encoder_attention, decoder_attention], dim=-1)
     attention[attention < 1e-5] = float("nan")
     encoder_length_histogram = integer_histogram(out["encoder_lengths"],
@@ -178,29 +165,22 @@ def interpret_output(
     encoder_variables = out["encoder_variables"].squeeze(-2).clone()
     encode_mask = create_mask(encoder_variables.shape[1],
                               out["encoder_lengths"])
-    encoder_variables = encoder_variables.masked_fill(
-        encode_mask.cpu().unsqueeze(-1), 0.0).sum(dim=1)
+    encoder_variables = encoder_variables.masked_fill(encode_mask.cpu().unsqueeze(-1), 0.0).sum(dim=1)
     out["encoder_lengths"] = torch.tensor(out["encoder_lengths"])
-    encoder_variables /= (out["encoder_lengths"].where(
-        out["encoder_lengths"] > 0,
+    encoder_variables /= (out["encoder_lengths"].where(out["encoder_lengths"] > 0,
         torch.ones_like(out["encoder_lengths"])).unsqueeze(-1))
     decoder_variables = out["decoder_variables"].squeeze(-2).clone()
     decode_mask = create_mask(decoder_variables.shape[1],
                               out["decoder_lengths"])
-    decoder_variables = decoder_variables.masked_fill(
-        decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
+    decoder_variables = decoder_variables.masked_fill(decode_mask.unsqueeze(-1), 0.0).sum(dim=1)
     out["decoder_lengths"] = torch.tensor(out["decoder_lengths"])
     decoder_variables /= out["decoder_lengths"].unsqueeze(-1)
-    attention = masked_op(
-        attention[
-            :,
+    attention = masked_op(attention[:,
             attention_prediction_horizon,
             :,
-            :INPUT_SIZE + attention_prediction_horizon,
-        ],
+            :INPUT_SIZE + attention_prediction_horizon,],
         op="mean",
-        dim=1,
-    )
+        dim=1,)
     if reduction != "none":
         encoder_variables = encoder_variables.sum(dim=0)
         decoder_variables = decoder_variables.sum(dim=0)
@@ -208,22 +188,18 @@ def interpret_output(
     else:
         attention = attention / masked_op(attention, dim=1,
                                           op="sum").unsqueeze(-1)
-    interpretation = dict(
-        attention=attention.masked_fill(torch.isnan(attention), 0.0),
+    interpretation = dict(attention=attention.masked_fill(torch.isnan(attention), 0.0),
         encoder_variables=encoder_variables,
         decoder_variables=decoder_variables,
         encoder_length_histogram=encoder_length_histogram,
-        decoder_length_histogram=decoder_length_histogram,
-    )
+        decoder_length_histogram=decoder_length_histogram,)
     return interpretation
 
 def create_mask(size: int, lengths: torch.LongTensor, inverse: bool = False):
     if inverse:
-        return torch.tensor(torch.arange(torch.tensor(size))).unsqueeze(
-            0) < torch.tensor(lengths).unsqueeze(-1)
+        return torch.tensor(torch.arange(torch.tensor(size))).unsqueeze(0) < torch.tensor(lengths).unsqueeze(-1)
     else:
-        return torch.tensor(torch.arange(torch.tensor(size))).unsqueeze(
-            0) >= torch.tensor(lengths).unsqueeze(-1)
+        return torch.tensor(torch.arange(torch.tensor(size))).unsqueeze(0) >= torch.tensor(lengths).unsqueeze(-1)
 
 def integer_histogram(data, min, max):
     data = torch.tensor(data)
@@ -246,9 +222,7 @@ def Plot_Interpretation(config, encoder_npy, decoder_npy, list_of_abbr, SOURCE,
     fig_path = f"{SOURCE}/plt_attn"
     os.makedirs(fig_path, exist_ok=True)
     filename = "variable_importance.csv"
-    fnames = [
-        f"{fig_path}/encoder_{filename}", f"{fig_path}/decoder_{filename}"
-    ]
+    fnames = [f"{fig_path}/encoder_{filename}", f"{fig_path}/decoder_{filename}"]
 
     init_csvs(fnames, variable_labels)
     for node_id, abbr in enumerate(list_of_abbr):
@@ -257,14 +231,10 @@ def Plot_Interpretation(config, encoder_npy, decoder_npy, list_of_abbr, SOURCE,
 
         out = {}
 
-        out["decoder_variables"] = torch.tensor(D)[:, 1:].unsqueeze(
-            1).unsqueeze(2).cpu()
-        out["encoder_variables"] = torch.tensor(E).unsqueeze(1).unsqueeze(
-            2).cpu()
-        out["decoder_attention"] = torch.tensor(E)[:, 1:].unsqueeze(
-            1).unsqueeze(2).cpu()
-        out["encoder_attention"] = torch.tensor(D).unsqueeze(1).unsqueeze(
-            2).cpu()
+        out["decoder_variables"] = torch.tensor(D)[:, 1:].unsqueeze(1).unsqueeze(2).cpu()
+        out["encoder_variables"] = torch.tensor(E).unsqueeze(1).unsqueeze(2).cpu()
+        out["decoder_attention"] = torch.tensor(E)[:, 1:].unsqueeze(1).unsqueeze(2).cpu()
+        out["encoder_attention"] = torch.tensor(D).unsqueeze(1).unsqueeze(2).cpu()
         out["decoder_lengths"] = np.array(range(1, INPUT_SIZE + 1))
         out["encoder_lengths"] = np.array(range(1, INPUT_SIZE + 1))
         interpretation = interpret_output(out, reduction="sum")
@@ -288,30 +258,20 @@ def Plot_Interpretation(config, encoder_npy, decoder_npy, list_of_abbr, SOURCE,
     df_decoder_varimp = shift_values_and_insert_nan(df_decoder_varimp)
 
     mean_values = df_decoder_varimp.iloc[:, 1:].mean(axis=0)
-    print("mean_values", mean_values)
 
     df4 = pd.DataFrame([mean_values], index=[nation])
-    print("df4", df4)
-
     df4.to_csv(fnames[1].replace("oder_", "oder_avg_"))
-    print("fnames[1]", fnames[1])
 
 def Plot_VariableImportance_Globally(nation, current_timestamp):
 
-    metric_dirs = glob.iglob(f"../{DIR}/covid/*_metric__*.csv")
+    metric_dirs = glob.iglob(f"../{DIR_TO_PARSE}/covid/*_metric__*.csv")
     metric_dirs = [m for m in metric_dirs]
-    tups = [
-        m.split("/")[-1].replace("output/covid/", "").split("_metric__")[0]
-        for m in metric_dirs
-    ]
+    tups = [m.split("/")[-1].replace("output/covid/", "").split("_metric__")[0]
+        for m in metric_dirs]
     models = [m.rsplit("_", 1)[0] for m in tups]
-    print("models", models)
-    print("models", len(models))
 
-    [
-        int(m.split("_")[-1].split(".")[0]) for m in metric_dirs
-        if " copy" not in m.split("_")[-1].split(".")[0]
-    ]
+    [int(m.split("_")[-1].split(".")[0]) for m in metric_dirs
+        if " copy" not in m.split("_")[-1].split(".")[0]]
 
     with open("x_data_US/vars.json", "r") as file:
         all_cols = json.load(file)
@@ -322,64 +282,52 @@ def Plot_VariableImportance_Globally(nation, current_timestamp):
         if type == "Encoder":
             all_cols = ["new_confirmed"] + all_cols
         dfs = []
-        files = glob.iglob(
-            f"../{DIR}/covid/*/*/**/{type.lower()}_avg_variable_importance.csv",
-            recursive=True,
-        )
+        files = glob.iglob(f"../{DIR_TO_PARSE}/covid/*/*/**/{type.lower()}_avg_variable_importance.csv",
+            recursive=True,)
         print("files", files)
         for week_file in files:
             modeln = week_file.rsplit("/", 3)[-4]
-            print("modeln", modeln)
-            print("week_file", week_file)
             if os.path.exists(week_file):
                 df_new = pd.DataFrame(columns=["Model"] + all_cols)
-                print("df_new", df_new)
+
                 df_sing = pd.read_csv(week_file).reset_index()
-                print("df_sing", df_sing)
 
                 try:
                     vals = list(df_sing.values[0][1:])
                     vals = [vals]
-                    print("vals", vals)
 
                     co = list(df_sing.columns)[1:]
-                    print("co", co)
 
                     co = [c.replace(f"_lag_{INPUT_SIZE}", "") for c in co]
-                    print("co", co)
+
                     df_new[co] = vals
                     df_new["Model"] = modeln
-                    print("df_new", df_new)
+
                     dfs.append(df_new[["Model"] + co])
-                    #df_new.to_csv("z_mk_varimportancet_tmp.csv")
+
                 except:
-                    kkkk
+                    pass
 
         with open("x_data_US/vars.json", "r") as file:
             cols = json.load(file)
 
         if type == "Encoder":
             cols_en = ["new_confirmed"] + cols
-            print("dfs", len(dfs))
+
             df_out = pd.concat(dfs)
             df2 = df_out.sort_values(by=["Model"])
-            print("df2", df2)
+
             cols_en = [c for c in cols_en if c in df2.columns]
             df2 = df2[cols_en]
-            print("df2", df2)
+
             mean_values = df2.iloc[:, :].mean(axis=0)
-            print("mean_values", len(mean_values))
+
             df3 = pd.DataFrame([mean_values], index=[nation])
             fig_path = f"{current_timestamp}/Variable Importance {type}"
 
             df3.to_csv(f"{OUT_PATH}/{fig_path}.csv".replace(" ", ""))
-            print(
-                "f'{fig_path}.csv'.replace(' ', '-')",
-                f"{fig_path}.csv".replace(" ", "-"),
-            )
-            variable_labels = df3.columns.tolist()
 
-            print("variable_labels", variable_labels)
+            variable_labels = df3.columns.tolist()
 
         else:
             df_out = pd.concat(dfs)
@@ -393,27 +341,6 @@ def Plot_VariableImportance_Globally(nation, current_timestamp):
 
             fig_path = f"{current_timestamp}/Variable Importance {type}"
             df3b.to_csv(f"{OUT_PATH}/{fig_path}.csv".replace(" ", ""))
-            print("fig_path", fig_path)
-
-def init_csv(filename, labels, decoder):
-    with open(filename, "w", newline="") as csvfile:
-        csvwriter = csv.writer(csvfile)
-        if decoder:
-            csvwriter.writerow(["State"] + list(labels)[1:])
-        else:
-            csvwriter.writerow(["State"] + list(labels))
-
-def write_to_csv(abbr, data, labels, filename):
-
-    with open(filename, "a", newline="") as csvfile:
-
-        csvwriter = csv.writer(csvfile)
-
-        csvwriter.writerow([abbr] + list(data.numpy()))
-
-def init_csvs(filenames, labels):
-    init_csv(filenames[0], labels, False)
-    init_csv(filenames[1], labels, False)
 
 def process_and_save_interpretation(interpretation, abbr, variable_labels,
                                     filenames):
@@ -424,78 +351,32 @@ def process_and_save_interpretation(interpretation, abbr, variable_labels,
     write_to_csv(abbr, interpretation["decoder_variables"],
                  variable_labels[1:], filenames[1])
 
-def plot_bar(tensor, labels, filename, title):
-    tensor = torch.tensor(tensor).squeeze()
-    assert tensor.dim() == 1, "Tensor must be 1-dimensional"
-    assert len(labels) == tensor.size(0), "Labels size must match tensor size"
-    plt.figure(figsize=(8, 6))
-    yyy = tensor.numpy().tolist()
-    low = min(yyy)
-    high = max(yyy)
-    plt.ylim([low * 0.98, high * 1.02])
-    plt.bar(labels, tensor.numpy(), color="skyblue")
-    plt.xlabel("Variables")
-    plt.ylabel("Values")
-    plt.title(f"{title}")
-    plt.xticks(rotation=90)
-    plt.tight_layout()
-    plt.savefig(filename + ".png")
-    plt.close()
-
 def Prepare_Plot_VarImportance(nation, current_timestamp):
 
     filename = f"variable_importance.csv"
-    fnames = [
-        f"../data/x_data_aux/{nation}/encoder_{filename}",
-        f"../data/x_data_aux/{nation}/decoder_{filename}",
-    ]
-    id_df = pd.read_csv(
-        f"../data/x_data_aux/{nation}/statemappings{nation}.csv")
+    fnames = [f"../data/x_data_aux/{nation}/encoder_{filename}",
+        f"../data/x_data_aux/{nation}/decoder_{filename}",]
+    id_df = pd.read_csv(f"../data/x_data_aux/{nation}/statemappings{nation}.csv")
     list_of_states = id_df["State"].tolist()
     list_of_abbr = id_df["Abbr"].tolist()
     dict(zip(list_of_states, list_of_abbr))
 
-    def make_init_files(SOURCE, fnames):
-        SOURCE_1 = f"{SOURCE}/_encoder_sparse/_matrix__02.npy"
-        SOURCE_2 = f"{SOURCE}/_decoder_sparse/_matrix__02.npy"
-        encoder_npy, decoder_npy = np.load(SOURCE_1), np.load(SOURCE_2)
-
-        encoder_npy = encoder_npy[:, :, :].squeeze()
-        decoder_npy = decoder_npy[:, :, :].squeeze()
-        if decoder_npy.ndim == 2:
-            decoder_npy = np.expand_dims(decoder_npy, axis=-1)
-        ts, a, num_vars = encoder_npy.shape
-        c_file = f"{SOURCE}/config.json"
-        with open(c_file, "r") as f:
-            config = json.load(f)
-
-        variable_labels = config["input_cols"][1:-1]
-
-        assert len(variable_labels) == num_vars
-
-        init_csvs(fnames, variable_labels)
-        return config, encoder_npy, decoder_npy, variable_labels
-
-    if True:
+    if False:
         print("Sanity run")
         SOURCE = f"/home/minky/code_mk/ReGraFT_US_double/results/covid/US/ReGraFT-Top06-fusionFAP-H8-a64-11IF-WeightedHuber-s0.4-delta3.5-gcn2_42_42/11IF-Diff/999/"
-        config, encoder_npy, decoder_npy, variable_labels = make_init_files(
-            SOURCE, fnames)
+        config, encoder_npy, decoder_npy, variable_labels = make_init_files(SOURCE, fnames)
         Plot_Interpretation(config, encoder_npy, decoder_npy, list_of_abbr,
                             SOURCE, variable_labels)
 
-    all_items = glob.iglob(f"../{DIR}/covid/*/*/*/*//", recursive=True)
+    all_items = glob.iglob(f"../{DIR_TO_PARSE}/covid/*/*/*/*//", recursive=True)
 
     directories_only = [item for item in all_items if os.path.isdir(item)]
-    print("directories_only", directories_only)
 
     for SOURCE in directories_only:
 
-        print("SOURCE", SOURCE)
         try:
 
-            config, encoder_npy, decoder_npy, variable_labels = make_init_files(
-                SOURCE, fnames)
+            config, encoder_npy, decoder_npy, variable_labels = make_init_files(SOURCE, fnames)
             Plot_Interpretation(config, encoder_npy, decoder_npy, list_of_abbr,
                                 SOURCE, variable_labels)
         except Exception as e:
