@@ -1,6 +1,3 @@
-**The repository with full data can be downloaded from** [this link](https://drive.google.com/drive/folders/1nxc_IypMyXYVitOnciIbIrcEh4gDcHQ8?usp=drive_link).
-
-
 # Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers
 
 - **Authors:** Minkyoung Kim, Jae Heon Kim, Beakcheol Jang
