@@ -26,37 +26,21 @@ cd code
 conda create -n regraft39 python=3.9
 conda activate regraft39
 pip install -r requirements.txt
+chmod +x ./run.sh
 ./run.sh
 ```
 
 ### For Windows Users:
 
-1. **Clone the repository**:
-   Open the command prompt and run the following:
-
-   ```bash
-   git clone https://github.com/mfriendly/ReGraFT.git
-   cd ReGraFT\code
-   ```
-
-2. **Create Python 3.9 environment (`regraft39`)**:
-   If you use `conda`, create a Python 3.9 environment by running:
-
-   ```bash
-   conda create -n regraft39 python=3.9
-   conda activate regraft39
-   ```
-
-3. **Install the required packages**:
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-4. **Run the code**:
-   ```bash
-   python main_Pipeline.py
-   ```
+```bash
+git clone https://github.com/mfriendly/ReGraFT.git
+cd ReGraFT
+cd code
+conda create -n regraft39 python=3.9
+conda activate regraft39
+pip install -r requirements.txt
+python main_Pipeline.py
+```
 
 ## License
 
