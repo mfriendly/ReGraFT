@@ -10,8 +10,6 @@ OUT_PATH = "z_Variable_Importance"
 current_timestamp = datetime.now().strftime('%Y%m%d-%H%M%S')
 os.makedirs(os.path.join(OUT_PATH, current_timestamp), exist_ok=True)
 
-
-
 def thousand_separator(x, pos):
     return f'{x:, .0f}'
 
@@ -24,9 +22,7 @@ def make_selection_plot_Final(fig, ax, title, values, labels, colors):
     ordered_values = values[order]
     ordered_labels = [label for label in np.asarray(labels)[order]]
     ordered_colors = [colors[i] for i, label in enumerate(ordered_labels)]
-    ordered_labels = [
-        label.replace('_', ' ').capitalize() for label in ordered_labels
-    ]
+    ordered_labels = [label.replace('_', ' ').capitalize() for label in ordered_labels]
     bars = ax.barh(np.arange(len(values)),
                    ordered_values,
                    tick_label=ordered_labels,
@@ -40,37 +36,32 @@ def make_selection_plot_Final(fig, ax, title, values, labels, colors):
     padding = max_val * 0.005
     max_width = max(ordered_values.numpy())
     min_width = min(ordered_values.numpy())
-    for bar, value in zip(bars, ordered_values):
-        text = f"{value:.2f}"
-        text_width = ax.text(bar.get_width() + padding,
-                             bar.get_y() + bar.get_height() / 2,
-                             text,
-                             va='center').get_window_extent().width
-        fig.canvas.draw()
-        pixels_to_units = fig.dpi_scale_trans.inverted().transform(
-            (text_width, 0))[0] / 10
-        max_width = max(max_width, bar.get_width() + padding + pixels_to_units)
+    if False:
+        for bar, value in zip(bars, ordered_values):
+            text = f"{value:.2f}"
+            text_width = ax.text(bar.get_width() + padding,
+                                bar.get_y() + bar.get_height() / 2,
+                                text,
+                                va='center').get_window_extent().width
+            fig.canvas.draw()
+            pixels_to_units = fig.dpi_scale_trans.inverted().transform((text_width, 0))[0] / 10
+            max_width = max(max_width, bar.get_width() + padding + pixels_to_units)
     MINX, MAXX = 10.3, 13
     ax.set_xlim(max(MINX, min_width - 1), min(MAXX, max_width + padding * 4.))
 
     def save_labels_and_values(labels, values):
 
-        with open(
-                f'{OUT_PATH}/{current_timestamp}/US_var_importance_final_labels.json',
+        with open(f'{OUT_PATH}/{current_timestamp}/US_var_importance_final_labels.json',
                 'w') as f:
             json.dump(labels, f, indent=4)
 
-        np.save(
-            f'{OUT_PATH}/{current_timestamp}/US_var_importance_final_values.npy',
+        np.save(f'{OUT_PATH}/{current_timestamp}/US_var_importance_final_values.npy',
             values.numpy())
 
     save_labels_and_values(ordered_labels, ordered_values)
     return fig
 
-def Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(
-        df_AVG, df2, df3, filename):
-    pass
-
+def Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(df_AVG, df2, df3, filename):
     sns.color_palette("pastel")
 
     color_list = ['skyblue'] * 30
@@ -89,8 +80,7 @@ def Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(
         if type == 'Avg':
 
             fig_path = f"Variable Importance {type}"
-            df_AVG.to_csv(f'{fig_path}_Final.csv'.replace(
-                ' ', '-'))
+            df_AVG.to_csv(f'{fig_path}_Final.csv'.replace(' ', '-'))
             print("df_AVG", df_AVG)
             variable_labels = df_AVG.columns.tolist()
 
@@ -105,9 +95,7 @@ def Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(
             labels.append(label)
     plt.tight_layout()
 
-    labels = [
-        "is_holiday", "categorical_week", "stringency_index", "school_closing"
-    ]
+    labels = ["is_holiday", "categorical_week", "stringency_index", "school_closing"]
 
     plt.tight_layout(rect=[0, 0, 0.9, 1])
     plt.subplots_adjust(left=0.05,
@@ -119,7 +107,7 @@ def Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(
 
     plt.tight_layout()
 
-    if False:
+    if True:
 
         plt.savefig(filename, dpi=300)
 
@@ -137,8 +125,7 @@ def sort_and_save_csv(input_file, output_file, output_file_xlabel):
 
     df_sorted_columns.to_csv(output_file, index=False)
 
-    df_sorted_columns_Xlabel = df_sorted_columns.drop(
-        columns=['new_confirmed'])
+    df_sorted_columns_Xlabel = df_sorted_columns.drop(columns=['new_confirmed'])
     df_sorted_columns_Xlabel.to_csv(output_file_xlabel, index=False)
     print(f"Sorted CSV saved as '{output_file}'")
 
@@ -182,8 +169,6 @@ if __name__ == "__main__":
     df_AVG = pd.read_csv(AVG)
     df3 = pd.read_csv(D)
     df2 = pd.read_csv(E)
-    save_fname = os.getcwd(
-    ) + f'/{OUT_PATH}/{current_timestamp}/{nation}_var_importance_out.png'
-    print("save_fname", save_fname)
-    Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(
-        df_AVG, df2, df3, save_fname)
+    save_fname = os.getcwd() + f'/{OUT_PATH}/{current_timestamp}/{nation}_var_importance_out.png'
+    #print("save_fname", save_fname)
+    Plot_VariableImportance_Globally_fromCSV_include_holiday_vars(df_AVG, df2, df3, save_fname)
