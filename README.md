@@ -23,8 +23,8 @@ This repository provides the code and data for the paper titled **"Forecasting E
 git clone https://github.com/mfriendly/ReGraFT.git
 cd ReGraFT
 cd code
- conda create -n regraft39 python=3.9
- conda activate regraft39
+conda create -n regraft39 python=3.9
+conda activate regraft39
 pip install -r requirements.txt
 ./run.sh
 ```
@@ -47,13 +47,6 @@ pip install -r requirements.txt
    conda activate regraft39
    ```
 
-   For `virtualenv` users, you can create and activate the environment with:
-
-   ```bash
-   python -m venv regraft39
-   regraft39\Scripts\activate
-   ```
-
 3. **Install the required packages**:
 
    ```bash
@@ -61,14 +54,9 @@ pip install -r requirements.txt
    ```
 
 4. **Run the code**:
-   Windows doesn’t support `.sh` files directly. You can run the script manually or create a `.bat` file:
-
    ```bash
    python main_Pipeline.py
    ```
-
-   Alternatively, you can use Git Bash or another terminal that supports `.sh` files.
-
 
 ## License
 
