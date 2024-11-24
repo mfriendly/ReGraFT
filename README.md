@@ -1,7 +1,7 @@
 # Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers
 
 - **Authors:** Minkyoung Kim, Jae Heon Kim, Beakcheol Jang
-- **Submitted to:** IEEE Journal of Biomedical and Health Informatics (JBHI)
+- IEEE Journal of Biomedical and Health Informatics (JBHI)
 
 ## Project Overview
 
