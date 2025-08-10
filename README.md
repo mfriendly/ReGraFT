@@ -1,16 +1,10 @@
 # Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers
 
-**Journal:** IEEE Journal of Biomedical and Health Informatics (JBHI), vol. 29, no. 2, pp. 1546-1559, Feb. 2025  
-**DOI:** 10.1109/JBHI.2024.3488274
+Implementation of ["Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers"](https://ieeexplore.ieee.org/document/10738276) published in IEEE JBHI. The work presents a Multigraph-Gated Recurrent Unit (MGRU) architecture for spatiotemporal forecasting of COVID-19 spread.
 
 ## Repository Status
 
 This repository is currently under maintenance for code reorganization.
-
-## Project Overview
-
-Implementation of ["Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers"](https://ieeexplore.ieee.org/document/10738276) published in IEEE JBHI. The work presents a Multigraph-Gated Recurrent Unit (MGRU) architecture for spatiotemporal forecasting of COVID-19 spread.
-
 
 ## Citation
 
