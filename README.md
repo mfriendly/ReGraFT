@@ -1,47 +1,32 @@
 # Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers
 
-- **Authors:** Minkyoung Kim, Jae Heon Kim, Beakcheol Jang
-- IEEE Journal of Biomedical and Health Informatics (JBHI)
+**Journal:** IEEE Journal of Biomedical and Health Informatics (JBHI), vol. 29, no. 2, pp. 1546-1559, Feb. 2025  
+**DOI:** 10.1109/JBHI.2024.3488274
+
+## Repository Status
+
+This repository is currently under maintenance for code reorganization.
 
 ## Project Overview
 
-This repository provides the code and data for the paper titled **"Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers"**, which has been submitted to the IEEE JBHI. The paper presents a novel approach using **Multigraph-Gated Recurrent Unit (MGRU)** architecture for spatiotemporal forecasting of COVID-19 spread.
+Implementation of "Forecasting Epidemic Spread with Recurrent Graph Gate Fusion Transformers" published in IEEE JBHI. The work presents a Multigraph-Gated Recurrent Unit (MGRU) architecture for spatiotemporal forecasting of COVID-19 spread.
 
+## Citation
 
-## Code Base and References
-
-- The code is based on the following repositories:
-  - [STNSCM](https://github.com/EternityZY/STNSCM) by EternityZY
-  - [Temporal Fusion Transformer](https://github.com/mattsherar/Temporal_Fusion_Transform) by Matt Sherar
-- The variable importance code is adapted from [pytorch-forecasting](https://github.com/sktime/pytorch-forecasting).
-
-## Installation and Running
-
-### For Linux/macOS Users:
-
-```bash
-git clone https://github.com/mfriendly/ReGraFT.git
-cd ReGraFT
-cd code
-conda create -n regraft39 python=3.9
-conda activate regraft39
-pip install -r requirements.txt
-chmod +x ./run.sh
-./run.sh
-```
-
-### For Windows Users:
-
-```bash
-git clone https://github.com/mfriendly/ReGraFT.git
-cd ReGraFT
-cd code
-conda create -n regraft39 python=3.9
-conda activate regraft39
-pip install -r requirements.txt
-python main_Pipeline.py
+```bibtex
+@article{kim2025forecasting,
+  title={Forecasting Epidemic Spread With Recurrent Graph Gate Fusion Transformers},
+  author={Kim, Minkyoung and Kim, Jae Heon and Jang, Beakcheol},
+  journal={IEEE Journal of Biomedical and Health Informatics},
+  volume={29},
+  number={2},
+  pages={1546--1559},
+  year={2025},
+  month={Feb},
+  doi={10.1109/JBHI.2024.3488274}
+}
 ```
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+MIT License 
